@@ -1,0 +1,31 @@
+# Estágio de Build
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /app
+
+# Instala dependências básicas
+RUN apk add --no-cache git
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# Compila os binários da API e do Worker
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/api-bin ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/worker-bin ./cmd/worker
+
+# Estágio Final
+FROM alpine:3.20
+
+WORKDIR /app
+
+RUN apk add --no-cache ca-certificates tzdata
+ENV TZ=America/Sao_Paulo
+
+COPY --from=builder /app/api-bin /app/api-bin
+COPY --from=builder /app/worker-bin /app/worker-bin
+
+EXPOSE 8080
+
+CMD ["/app/api-bin"]
