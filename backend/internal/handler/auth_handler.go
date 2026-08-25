@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/sistema-agendamento/backend/internal/domain"
 	"github.com/sistema-agendamento/backend/internal/middleware"
 	"github.com/sistema-agendamento/backend/internal/repository/postgres"
@@ -79,10 +80,9 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		return
 	}
 
-	tenant, err := h.repo.GetTenantByID(c.Request.Context(), user.TenantID)
-	if err != nil {
-		response.NotFound(c, "Estabelecimento não encontrado")
-		return
+	var tenant *domain.Tenant
+	if user.TenantID != nil && *user.TenantID != uuid.Nil {
+		tenant, _ = h.repo.GetTenantByID(c.Request.Context(), *user.TenantID)
 	}
 
 	response.Success(c, gin.H{

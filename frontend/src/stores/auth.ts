@@ -2,13 +2,17 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../services/api'
 
+export type UserRole = 'ADMIN_GLOBAL' | 'ADMIN_TENANT' | 'OPERATOR' | 'ADMIN'
+
 export interface User {
   id: string
-  tenant_id: string
+  tenant_id?: string | null
   name: string
   email: string
-  role: 'ADMIN' | 'OPERATOR'
+  role: UserRole
   is_active: boolean
+  created_at?: string
+  tenant?: Tenant
 }
 
 export interface Tenant {
@@ -24,6 +28,8 @@ export interface Tenant {
   logo_url?: string
   primary_color: string
   slot_interval_minutes: number
+  is_active?: boolean
+  created_at?: string
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -36,15 +42,26 @@ export const useAuthStore = defineStore('auth', () => {
   )
 
   const isAuthenticated = computed(() => !!token.value && !!user.value)
-  const isAdmin = computed(() => user.value?.role === 'ADMIN')
+  const isGlobalAdmin = computed(() => user.value?.role === 'ADMIN_GLOBAL')
+  const isTenantAdmin = computed(() => user.value?.role === 'ADMIN_TENANT' || user.value?.role === 'ADMIN')
+  const isOperator = computed(() => user.value?.role === 'OPERATOR')
+  const canManageUsers = computed(() => isGlobalAdmin.value || isTenantAdmin.value)
+  const canManageTenants = computed(() => isGlobalAdmin.value)
 
-  function setAuthData(authToken: string, authUser: User, authTenant: Tenant) {
+  // Compatibilidade legada
+  const isAdmin = computed(() => isGlobalAdmin.value || isTenantAdmin.value)
+
+  function setAuthData(authToken: string, authUser: User, authTenant: Tenant | null) {
     token.value = authToken
     user.value = authUser
     tenant.value = authTenant
     localStorage.setItem('token', authToken)
     localStorage.setItem('user', JSON.stringify(authUser))
-    localStorage.setItem('tenant', JSON.stringify(authTenant))
+    if (authTenant) {
+      localStorage.setItem('tenant', JSON.stringify(authTenant))
+    } else {
+      localStorage.removeItem('tenant')
+    }
   }
 
   function updateTenant(updatedTenant: Tenant) {
@@ -111,6 +128,11 @@ export const useAuthStore = defineStore('auth', () => {
     tenant,
     isAuthenticated,
     isAdmin,
+    isGlobalAdmin,
+    isTenantAdmin,
+    isOperator,
+    canManageUsers,
+    canManageTenants,
     login,
     registerTenant,
     fetchMe,

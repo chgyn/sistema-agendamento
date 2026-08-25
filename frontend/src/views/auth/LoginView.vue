@@ -68,17 +68,24 @@
         </form>
 
         <!-- Atalhos Demo de 1 Clique -->
-        <div class="mt-8 pt-6 border-t border-slate-800">
-          <p class="text-xs text-center text-slate-400 font-medium mb-3">
+        <div class="mt-8 pt-6 border-t border-slate-800 space-y-2">
+          <p class="text-xs text-center text-slate-400 font-medium mb-2">
             Acesso Rápido de Demonstração (1 Clique):
           </p>
+          <button
+            type="button"
+            @click="fillDemo('admin@plataforma.com', 'admin123')"
+            class="w-full py-2 px-3 rounded-lg bg-purple-950/60 hover:bg-purple-900/70 border border-purple-700/50 text-purple-300 text-xs font-semibold text-center transition flex items-center justify-center gap-1.5 shadow-sm"
+          >
+            <span>👑 Administrador Geral da Plataforma</span>
+          </button>
           <div class="grid grid-cols-2 gap-2">
             <button
               type="button"
               @click="fillDemo('admin@domnavalha.com', 'admin123')"
               class="py-2 px-3 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 text-emerald-300 text-xs font-medium text-center transition"
             >
-              💈 Barbearia Dom Navalha
+              💈 Dom Navalha
             </button>
             <button
               type="button"

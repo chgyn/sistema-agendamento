@@ -15,7 +15,7 @@ var (
 
 type CustomClaims struct {
 	UserID   uuid.UUID   `json:"user_id"`
-	TenantID uuid.UUID   `json:"tenant_id"`
+	TenantID *uuid.UUID  `json:"tenant_id,omitempty"`
 	Email    string      `json:"email"`
 	Name     string      `json:"name"`
 	Role     domain.Role `json:"role"`

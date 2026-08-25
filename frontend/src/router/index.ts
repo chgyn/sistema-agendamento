@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore, type UserRole } from '../stores/auth'
 
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/auth/LoginView.vue'
@@ -12,6 +12,9 @@ import ServicesView from '../views/admin/ServicesView.vue'
 import ProfessionalsView from '../views/admin/ProfessionalsView.vue'
 import CustomersView from '../views/admin/CustomersView.vue'
 import SettingsView from '../views/admin/SettingsView.vue'
+import TenantsManagementView from '../views/admin/TenantsManagementView.vue'
+import UsersManagementView from '../views/admin/UsersManagementView.vue'
+import GlobalAdminsView from '../views/admin/GlobalAdminsView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -51,6 +54,24 @@ const router = createRouter({
           component: DashboardView,
         },
         {
+          path: 'estabelecimentos',
+          name: 'admin-tenants',
+          component: TenantsManagementView,
+          meta: { roles: ['ADMIN_GLOBAL'] },
+        },
+        {
+          path: 'administradores-globais',
+          name: 'admin-global-admins',
+          component: GlobalAdminsView,
+          meta: { roles: ['ADMIN_GLOBAL'] },
+        },
+        {
+          path: 'usuarios',
+          name: 'admin-users',
+          component: UsersManagementView,
+          meta: { roles: ['ADMIN_GLOBAL', 'ADMIN_TENANT', 'ADMIN'] },
+        },
+        {
           path: 'agenda',
           name: 'admin-agenda',
           component: AppointmentsCalendarView,
@@ -59,11 +80,13 @@ const router = createRouter({
           path: 'servicos',
           name: 'admin-services',
           component: ServicesView,
+          meta: { roles: ['ADMIN_GLOBAL', 'ADMIN_TENANT', 'ADMIN'] },
         },
         {
           path: 'profissionais',
           name: 'admin-professionals',
           component: ProfessionalsView,
+          meta: { roles: ['ADMIN_GLOBAL', 'ADMIN_TENANT', 'ADMIN'] },
         },
         {
           path: 'clientes',
@@ -74,6 +97,7 @@ const router = createRouter({
           path: 'configuracoes',
           name: 'admin-settings',
           component: SettingsView,
+          meta: { roles: ['ADMIN_GLOBAL', 'ADMIN_TENANT', 'ADMIN'] },
         },
       ],
     },
@@ -84,17 +108,41 @@ const router = createRouter({
   ],
 })
 
-// Navigation Guard de Autenticação
+// Navigation Guard de Autenticação e Controle de Acesso por Perfil
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
 
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+  if (to.matched.some(record => record.meta.requiresAuth) && !authStore.isAuthenticated) {
     next({ name: 'login' })
-  } else if ((to.name === 'login' || to.name === 'register') && authStore.isAuthenticated) {
-    next({ name: 'admin-dashboard' })
-  } else {
-    next()
+    return
   }
+
+  if ((to.name === 'login' || to.name === 'register') && authStore.isAuthenticated) {
+    next({ name: 'admin-dashboard' })
+    return
+  }
+
+  // Verificação de permissões por Role
+  const allowedRoles = to.meta.roles as UserRole[] | undefined
+  if (allowedRoles && allowedRoles.length > 0 && authStore.user) {
+    let currentRole = authStore.user.role
+    if (currentRole === 'ADMIN') {
+      currentRole = 'ADMIN_TENANT'
+    }
+
+    const hasPermission = allowedRoles.some(r => {
+      if (r === 'ADMIN') return currentRole === 'ADMIN_TENANT'
+      return r === currentRole
+    })
+
+    if (!hasPermission) {
+      console.warn(`Acesso negado à rota ${to.path} para o perfil ${currentRole}`)
+      next({ name: 'admin-dashboard' })
+      return
+    }
+  }
+
+  next()
 })
 
 export default router

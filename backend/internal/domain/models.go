@@ -11,8 +11,12 @@ import (
 type Role string
 
 const (
-	RoleAdmin    Role = "ADMIN"
-	RoleOperator Role = "OPERATOR"
+	RoleAdminGlobal Role = "ADMIN_GLOBAL"
+	RoleAdminTenant Role = "ADMIN_TENANT"
+	RoleOperator    Role = "OPERATOR"
+
+	// RoleAdmin mantido para compatibilidade legada (mapeado para ADMIN_TENANT)
+	RoleAdmin Role = "ADMIN"
 )
 
 // AppointmentStatus types
@@ -28,23 +32,26 @@ const (
 
 // Domain Errors
 var (
-	ErrTenantNotFound          = errors.New("estabelecimento não encontrado")
-	ErrUserNotFound            = errors.New("usuário não encontrado")
-	ErrInvalidCredentials      = errors.New("credenciais inválidas")
-	ErrEmailAlreadyExists      = errors.New("o e-mail já está cadastrado")
-	ErrSlugAlreadyExists       = errors.New("o identificador (slug) da barbearia/salão já está em uso")
-	ErrUnauthorized            = errors.New("acesso não autorizado")
-	ErrForbidden               = errors.New("você não tem permissão para realizar esta ação")
-	ErrServiceNotFound         = errors.New("serviço não encontrado")
-	ErrProfessionalNotFound    = errors.New("profissional não encontrado")
-	ErrCustomerNotFound        = errors.New("cliente não encontrado")
-	ErrAppointmentNotFound     = errors.New("agendamento não encontrado")
-	ErrSlotAlreadyBooked       = errors.New("este horário já foi reservado por outro cliente. Por favor, escolha outro horário disponível")
-	ErrOutsideWorkingHours     = errors.New("o horário selecionado está fora do expediente de atendimento do profissional")
-	ErrSlotInBreak             = errors.New("o horário selecionado coincide com o intervalo do profissional")
-	ErrSlotInException         = errors.New("o profissional possui um bloqueio ou folga neste horário")
-	ErrInvalidAppointmentTime  = errors.New("horário de agendamento inválido ou no passado")
-	ErrProfessionalNotAssigned = errors.New("o profissional selecionado não executa este serviço")
+	ErrTenantNotFound              = errors.New("estabelecimento não encontrado")
+	ErrUserNotFound                = errors.New("usuário não encontrado")
+	ErrInvalidCredentials          = errors.New("credenciais inválidas")
+	ErrEmailAlreadyExists          = errors.New("o e-mail já está cadastrado")
+	ErrSlugAlreadyExists           = errors.New("o identificador (slug) da barbearia/salão já está em uso")
+	ErrUnauthorized                = errors.New("acesso não autorizado")
+	ErrForbidden                   = errors.New("você não tem permissão para realizar esta ação")
+	ErrServiceNotFound             = errors.New("serviço não encontrado")
+	ErrProfessionalNotFound        = errors.New("profissional não encontrado")
+	ErrCustomerNotFound            = errors.New("cliente não encontrado")
+	ErrAppointmentNotFound         = errors.New("agendamento não encontrado")
+	ErrSlotAlreadyBooked           = errors.New("este horário já foi reservado por outro cliente. Por favor, escolha outro horário disponível")
+	ErrOutsideWorkingHours         = errors.New("o horário selecionado está fora do expediente de atendimento do profissional")
+	ErrSlotInBreak                 = errors.New("o horário selecionado coincide com o intervalo do profissional")
+	ErrSlotInException             = errors.New("o profissional possui um bloqueio ou folga neste horário")
+	ErrInvalidAppointmentTime      = errors.New("horário de agendamento inválido ou no passado")
+	ErrProfessionalNotAssigned     = errors.New("o profissional selecionado não executa este serviço")
+	ErrCannotManageOtherTenantUser = errors.New("você não tem permissão para gerenciar usuários de outro estabelecimento")
+	ErrCannotCreateGlobalAdmin     = errors.New("somente administradores gerais podem cadastrar outros administradores gerais")
+	ErrTenantRequired              = errors.New("o estabelecimento é obrigatório para este perfil de usuário")
 )
 
 // Tenant representa a barbearia ou salão de beleza (conta isolada)
@@ -70,17 +77,17 @@ type Tenant struct {
 	Services      []Service      `gorm:"foreignKey:TenantID" json:"services,omitempty"`
 }
 
-// User representa os operadores ou administradores vinculados a um Tenant
+// User representa os operadores, administradores de tenant ou administradores gerais
 type User struct {
-	ID           uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	TenantID     uuid.UUID `gorm:"type:uuid;index;not null" json:"tenant_id"`
-	Name         string    `gorm:"type:varchar(150);not null" json:"name"`
-	Email        string    `gorm:"type:varchar(150);uniqueIndex;not null" json:"email"`
-	PasswordHash string    `gorm:"type:varchar(255);not null" json:"-"`
-	Role         Role      `gorm:"type:varchar(30);default:'ADMIN'" json:"role"`
-	IsActive     bool      `gorm:"default:true" json:"is_active"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	TenantID     *uuid.UUID `gorm:"type:uuid;index" json:"tenant_id,omitempty"` // Nulo para ADMIN_GLOBAL
+	Name         string     `gorm:"type:varchar(150);not null" json:"name"`
+	Email        string     `gorm:"type:varchar(150);uniqueIndex;not null" json:"email"`
+	PasswordHash string     `gorm:"type:varchar(255);not null" json:"-"`
+	Role         Role       `gorm:"type:varchar(30);default:'ADMIN_TENANT'" json:"role"`
+	IsActive     bool       `gorm:"default:true" json:"is_active"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 
 	Tenant *Tenant `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
 }

@@ -18,12 +18,18 @@ import (
 )
 
 func setupTestDB(t *testing.T) (*gorm.DB, *postgres.Repository) {
-	// Cria banco SQLite em memória com busy_timeout para serializar requisições concorrentes em teste
-	db, err := gorm.Open(sqlite.Open("file:memtest?mode=memory&cache=shared&_busy_timeout=10000"), &gorm.Config{
+	// Cria banco SQLite em memória com nome único por teste e busy_timeout
+	dbName := fmt.Sprintf("file:memtest_%d?mode=memory&cache=shared&_busy_timeout=10000", time.Now().UnixNano())
+	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
 		t.Fatalf("falha ao abrir banco de teste: %v", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err == nil {
+		sqlDB.SetMaxOpenConns(1)
 	}
 
 	err = db.AutoMigrate(

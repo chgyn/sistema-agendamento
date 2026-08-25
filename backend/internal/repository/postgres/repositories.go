@@ -63,8 +63,58 @@ func (r *Repository) CreateTenant(ctx context.Context, tenant *domain.Tenant) er
 	return r.db.WithContext(ctx).Create(tenant).Error
 }
 
+func (r *Repository) CreateTenantWithAdmin(ctx context.Context, tenant *domain.Tenant, adminUser *domain.User) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var slugCount int64
+		tx.Model(&domain.Tenant{}).Where("slug = ?", tenant.Slug).Count(&slugCount)
+		if slugCount > 0 {
+			return domain.ErrSlugAlreadyExists
+		}
+
+		var emailCount int64
+		tx.Model(&domain.User{}).Where("email = ?", adminUser.Email).Count(&emailCount)
+		if emailCount > 0 {
+			return domain.ErrEmailAlreadyExists
+		}
+
+		if err := tx.Create(tenant).Error; err != nil {
+			return err
+		}
+
+		adminUser.TenantID = &tenant.ID
+		if err := tx.Create(adminUser).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
 func (r *Repository) UpdateTenant(ctx context.Context, tenant *domain.Tenant) error {
 	return r.db.WithContext(ctx).Save(tenant).Error
+}
+
+func (r *Repository) UpdateTenantStatus(ctx context.Context, tenantID uuid.UUID, isActive bool) error {
+	return r.db.WithContext(ctx).Model(&domain.Tenant{}).
+		Where("id = ?", tenantID).
+		Update("is_active", isActive).Error
+}
+
+func (r *Repository) ListTenants(ctx context.Context, search string, onlyActive *bool) ([]domain.Tenant, error) {
+	var tenants []domain.Tenant
+	query := r.db.WithContext(ctx).Model(&domain.Tenant{})
+
+	if search != "" {
+		s := "%" + search + "%"
+		query = query.Where("name ILIKE ? OR slug ILIKE ? OR city ILIKE ? OR email ILIKE ?", s, s, s, s)
+	}
+
+	if onlyActive != nil {
+		query = query.Where("is_active = ?", *onlyActive)
+	}
+
+	err := query.Order("created_at desc").Find(&tenants).Error
+	return tenants, err
 }
 
 // -------------------------------------------------------------
@@ -102,10 +152,105 @@ func (r *Repository) CreateUser(ctx context.Context, user *domain.User) error {
 	return r.db.WithContext(ctx).Create(user).Error
 }
 
+func (r *Repository) UpdateUser(ctx context.Context, user *domain.User) error {
+	return r.db.WithContext(ctx).Save(user).Error
+}
+
+func (r *Repository) UpdateUserStatus(ctx context.Context, userID uuid.UUID, isActive bool) error {
+	return r.db.WithContext(ctx).Model(&domain.User{}).
+		Where("id = ?", userID).
+		Update("is_active", isActive).Error
+}
+
+func (r *Repository) DeleteUser(ctx context.Context, userID uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&domain.User{}, "id = ?", userID).Error
+}
+
 func (r *Repository) ListUsersByTenant(ctx context.Context, tenantID uuid.UUID) ([]domain.User, error) {
 	var users []domain.User
-	err := r.db.WithContext(ctx).Where("tenant_id = ?", tenantID).Find(&users).Error
+	err := r.db.WithContext(ctx).
+		Preload("Tenant").
+		Where("tenant_id = ?", tenantID).
+		Order("name asc").
+		Find(&users).Error
 	return users, err
+}
+
+func (r *Repository) ListAllUsers(ctx context.Context, tenantID *uuid.UUID, roleFilter string) ([]domain.User, error) {
+	var users []domain.User
+	query := r.db.WithContext(ctx).Preload("Tenant")
+
+	if tenantID != nil && *tenantID != uuid.Nil {
+		query = query.Where("tenant_id = ?", *tenantID)
+	}
+
+	if roleFilter != "" {
+		if roleFilter == "ADMIN" || roleFilter == "ADMIN_TENANT" {
+			query = query.Where("role IN ('ADMIN', 'ADMIN_TENANT')")
+		} else {
+			query = query.Where("role = ?", roleFilter)
+		}
+	}
+
+	err := query.Order("name asc").Find(&users).Error
+	return users, err
+}
+
+func (r *Repository) ListGlobalAdmins(ctx context.Context) ([]domain.User, error) {
+	var users []domain.User
+	err := r.db.WithContext(ctx).
+		Where("role = ?", domain.RoleAdminGlobal).
+		Order("name asc").
+		Find(&users).Error
+	return users, err
+}
+
+// -------------------------------------------------------------
+// GLOBAL PLATFORM DASHBOARD
+// -------------------------------------------------------------
+
+func (r *Repository) GetGlobalDashboardStats(ctx context.Context) (map[string]interface{}, error) {
+	var totalTenants, activeTenants, inactiveTenants int64
+	var totalUsers, totalAppointments, completedAppointments, totalCustomers int64
+	var totalRevenue float64
+
+	db := r.db.WithContext(ctx)
+
+	db.Model(&domain.Tenant{}).Count(&totalTenants)
+	db.Model(&domain.Tenant{}).Where("is_active = ?", true).Count(&activeTenants)
+	inactiveTenants = totalTenants - activeTenants
+
+	db.Model(&domain.User{}).Count(&totalUsers)
+	db.Model(&domain.Appointment{}).Count(&totalAppointments)
+	db.Model(&domain.Appointment{}).Where("status = ?", domain.StatusCompleted).Count(&completedAppointments)
+	db.Model(&domain.Customer{}).Count(&totalCustomers)
+
+	// Faturamento global de agendamentos confirmados/completos
+	db.Model(&domain.Appointment{}).
+		Where("status IN (?, ?)", domain.StatusConfirmed, domain.StatusCompleted).
+		Select("COALESCE(SUM(total_price), 0)").
+		Row().
+		Scan(&totalRevenue)
+
+	var recentTenants []domain.Tenant
+	db.Order("created_at desc").Limit(5).Find(&recentTenants)
+
+	var recentAppointments []domain.Appointment
+	db.Preload("Professional").Preload("Service").Preload("Customer").
+		Order("start_at desc").Limit(5).Find(&recentAppointments)
+
+	return map[string]interface{}{
+		"total_tenants":          totalTenants,
+		"active_tenants":         activeTenants,
+		"inactive_tenants":       inactiveTenants,
+		"total_users":            totalUsers,
+		"total_appointments":     totalAppointments,
+		"completed_appointments": completedAppointments,
+		"total_customers":        totalCustomers,
+		"total_revenue":          totalRevenue,
+		"recent_tenants":         recentTenants,
+		"recent_appointments":    recentAppointments,
+	}, nil
 }
 
 // -------------------------------------------------------------

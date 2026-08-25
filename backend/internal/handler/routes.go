@@ -18,6 +18,7 @@ type RouterConfig struct {
 	CustomerHandler      *CustomerHandler
 	DashboardHandler     *DashboardHandler
 	TenantHandler        *TenantHandler
+	UserHandler          *UserHandler
 }
 
 func SetupRoutes(cfg RouterConfig) {
@@ -66,10 +67,48 @@ func SetupRoutes(cfg RouterConfig) {
 		admin := api.Group("/admin")
 		admin.Use(middleware.AuthMiddleware(cfg.JWTService))
 		{
-			// Dashboard & Métricas
+			// ==========================================
+			// 1. RECURSOS EXCLUSIVOS DO ADMINISTRADOR GERAL
+			// ==========================================
+			globalOnly := admin.Group("")
+			globalOnly.Use(middleware.RequireRole(domain.RoleAdminGlobal))
+			{
+				// Dashboard Global da Plataforma
+				globalOnly.GET("/global-dashboard", cfg.TenantHandler.GetGlobalDashboard)
+
+				// Gestão de Estabelecimentos (Tenants)
+				globalOnly.GET("/tenants", cfg.TenantHandler.ListTenants)
+				globalOnly.POST("/tenants", cfg.TenantHandler.CreateTenantWithAdmin)
+				globalOnly.GET("/tenants/:id", cfg.TenantHandler.GetTenantByID)
+				globalOnly.PUT("/tenants/:id", cfg.TenantHandler.UpdateTenantGlobal)
+				globalOnly.PATCH("/tenants/:id/status", cfg.TenantHandler.ToggleTenantStatus)
+
+				// Gestão de Administradores Gerais
+				globalOnly.GET("/global-admins", cfg.UserHandler.ListGlobalAdmins)
+				globalOnly.POST("/global-admins", cfg.UserHandler.CreateGlobalAdmin)
+			}
+
+			// ==========================================
+			// 2. GESTÃO DE USUÁRIOS (ADMIN_GLOBAL e ADMIN_TENANT)
+			// ==========================================
+			userMgmt := admin.Group("/users")
+			userMgmt.Use(middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin))
+			{
+				userMgmt.GET("", cfg.UserHandler.List)
+				userMgmt.GET("/:id", cfg.UserHandler.GetByID)
+				userMgmt.POST("", cfg.UserHandler.Create)
+				userMgmt.PUT("/:id", cfg.UserHandler.Update)
+				userMgmt.PATCH("/:id/status", cfg.UserHandler.ToggleStatus)
+			}
+
+			// ==========================================
+			// 3. RECURSOS DO TENANT (ADMIN & OPERADOR)
+			// ==========================================
+
+			// Dashboard & Métricas do Tenant
 			admin.GET("/dashboard", cfg.DashboardHandler.GetKPIs)
 
-			// Agendamentos / Agenda
+			// Agendamentos / Agenda (Operadores e Admins)
 			admin.GET("/appointments", cfg.AppointmentHandler.List)
 			admin.GET("/appointments/:id", cfg.AppointmentHandler.GetByID)
 			admin.POST("/appointments", cfg.AppointmentHandler.CreateAdmin)
@@ -80,31 +119,31 @@ func SetupRoutes(cfg RouterConfig) {
 			// Serviços
 			admin.GET("/services", cfg.ServiceHandler.List)
 			admin.GET("/services/:id", cfg.ServiceHandler.GetByID)
-			admin.POST("/services", middleware.RequireRole(domain.RoleAdmin), cfg.ServiceHandler.Create)
-			admin.PUT("/services/:id", middleware.RequireRole(domain.RoleAdmin), cfg.ServiceHandler.Update)
-			admin.DELETE("/services/:id", middleware.RequireRole(domain.RoleAdmin), cfg.ServiceHandler.Delete)
+			admin.POST("/services", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ServiceHandler.Create)
+			admin.PUT("/services/:id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ServiceHandler.Update)
+			admin.DELETE("/services/:id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ServiceHandler.Delete)
 
 			// Profissionais, Horários e Bloqueios
 			admin.GET("/professionals", cfg.ProfessionalHandler.List)
 			admin.GET("/professionals/:id", cfg.ProfessionalHandler.GetByID)
-			admin.POST("/professionals", middleware.RequireRole(domain.RoleAdmin), cfg.ProfessionalHandler.Create)
-			admin.PUT("/professionals/:id", middleware.RequireRole(domain.RoleAdmin), cfg.ProfessionalHandler.Update)
-			admin.DELETE("/professionals/:id", middleware.RequireRole(domain.RoleAdmin), cfg.ProfessionalHandler.Delete)
+			admin.POST("/professionals", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.Create)
+			admin.PUT("/professionals/:id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.Update)
+			admin.DELETE("/professionals/:id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.Delete)
 
 			admin.GET("/professionals/:id/working-hours", cfg.ProfessionalHandler.GetWorkingHours)
-			admin.PUT("/professionals/:id/working-hours", middleware.RequireRole(domain.RoleAdmin), cfg.ProfessionalHandler.SaveWorkingHours)
+			admin.PUT("/professionals/:id/working-hours", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.SaveWorkingHours)
 
 			admin.GET("/professionals/:id/exceptions", cfg.ProfessionalHandler.ListExceptions)
-			admin.POST("/professionals/:id/exceptions", cfg.ProfessionalHandler.CreateException)
-			admin.DELETE("/professionals/:id/exceptions/:exception_id", cfg.ProfessionalHandler.DeleteException)
+			admin.POST("/professionals/:id/exceptions", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.CreateException)
+			admin.DELETE("/professionals/:id/exceptions/:exception_id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.DeleteException)
 
 			// Clientes e Histórico
 			admin.GET("/customers", cfg.CustomerHandler.List)
 			admin.GET("/customers/:id", cfg.CustomerHandler.GetByID)
 
-			// Configurações do Estabelecimento
+			// Configurações do Estabelecimento (Restrito a ADMIN_GLOBAL e ADMIN_TENANT)
 			admin.GET("/settings", cfg.TenantHandler.GetSettings)
-			admin.PUT("/settings", middleware.RequireRole(domain.RoleAdmin), cfg.TenantHandler.UpdateSettings)
+			admin.PUT("/settings", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.TenantHandler.UpdateSettings)
 		}
 	}
 }

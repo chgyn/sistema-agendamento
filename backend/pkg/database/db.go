@@ -74,10 +74,35 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 
 // SeedInitialData popula dados de teste ricos para demonstração imediata
 func SeedInitialData(db *gorm.DB) error {
+	// Senha padrão demo: admin123
+	passHash, _ := hash.HashPassword("admin123")
+
+	// 0. Garante existência do Administrador Geral da Plataforma
+	var globalAdminCount int64
+	db.Model(&domain.User{}).Where("email = ?", "admin@plataforma.com").Count(&globalAdminCount)
+	if globalAdminCount == 0 {
+		globalAdmin := domain.User{
+			ID:           uuid.New(),
+			TenantID:     nil,
+			Name:         "Administrador Geral da Plataforma",
+			Email:        "admin@plataforma.com",
+			PasswordHash: passHash,
+			Role:         domain.RoleAdminGlobal,
+			IsActive:     true,
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		}
+		if err := db.Create(&globalAdmin).Error; err != nil {
+			log.Printf("Aviso ao criar admin global: %v", err)
+		} else {
+			log.Println("👑 Administrador Geral inicial criado: admin@plataforma.com")
+		}
+	}
+
 	var count int64
 	db.Model(&domain.Tenant{}).Count(&count)
 	if count > 0 {
-		return nil // Já existem dados
+		return nil // Já existem tenants
 	}
 
 	log.Println("🌱 Populando banco com dados de demonstração multi-tenant...")
@@ -105,25 +130,22 @@ func SeedInitialData(db *gorm.DB) error {
 		return err
 	}
 
-	// Senha padrão: admin123
-	passHash, _ := hash.HashPassword("admin123")
-
 	// Usuários Tenant 1
 	admin1 := domain.User{
 		ID:           uuid.New(),
-		TenantID:     tenant1ID,
+		TenantID:     &tenant1ID,
 		Name:         "Carlos Administrador",
 		Email:        "admin@domnavalha.com",
 		PasswordHash: passHash,
-		Role:         domain.RoleAdmin,
+		Role:         domain.RoleAdminTenant,
 		IsActive:     true,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
 	op1 := domain.User{
 		ID:           uuid.New(),
-		TenantID:     tenant1ID,
-		Name:         "Marcos Atendente",
+		TenantID:     &tenant1ID,
+		Name:         "Marcos Operador",
 		Email:        "operador@domnavalha.com",
 		PasswordHash: passHash,
 		Role:         domain.RoleOperator,
@@ -423,11 +445,11 @@ func SeedInitialData(db *gorm.DB) error {
 
 	admin2 := domain.User{
 		ID:           uuid.New(),
-		TenantID:     tenant2ID,
+		TenantID:     &tenant2ID,
 		Name:         "Juliana Administradora",
 		Email:        "admin@bellavista.com",
 		PasswordHash: passHash,
-		Role:         domain.RoleAdmin,
+		Role:         domain.RoleAdminTenant,
 		IsActive:     true,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),

@@ -77,11 +77,11 @@ func (s *AuthService) RegisterTenant(ctx context.Context, dto RegisterTenantDTO)
 
 	user := domain.User{
 		ID:           uuid.New(),
-		TenantID:     tenantID,
+		TenantID:     &tenantID,
 		Name:         dto.AdminName,
 		Email:        dto.AdminEmail,
 		PasswordHash: passHash,
-		Role:         domain.RoleAdmin,
+		Role:         domain.RoleAdminTenant,
 		IsActive:     true,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
@@ -117,9 +117,12 @@ func (s *AuthService) Login(ctx context.Context, dto LoginDTO) (*AuthResponse, e
 		return nil, domain.ErrInvalidCredentials
 	}
 
-	tenant, err := s.repo.GetTenantByID(ctx, user.TenantID)
-	if err != nil {
-		return nil, domain.ErrTenantNotFound
+	var tenant *domain.Tenant
+	if user.TenantID != nil && *user.TenantID != uuid.Nil {
+		tenant, err = s.repo.GetTenantByID(ctx, *user.TenantID)
+		if err != nil {
+			return nil, domain.ErrTenantNotFound
+		}
 	}
 
 	token, err := s.jwtService.GenerateToken(user)

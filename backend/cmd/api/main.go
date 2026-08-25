@@ -56,6 +56,7 @@ func main() {
 	customerHandler := handler.NewCustomerHandler(repo)
 	dashboardHandler := handler.NewDashboardHandler(tenantService)
 	tenantHandler := handler.NewTenantHandler(repo)
+	userHandler := handler.NewUserHandler(repo)
 
 	// 8. Configura Router Gin
 	r := gin.Default()
@@ -70,6 +71,7 @@ func main() {
 		CustomerHandler:      customerHandler,
 		DashboardHandler:     dashboardHandler,
 		TenantHandler:        tenantHandler,
+		UserHandler:          userHandler,
 	})
 
 	// 9. Inicia Servidor HTTP
