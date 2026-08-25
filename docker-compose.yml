@@ -63,6 +63,9 @@ services:
       REDIS_PORT: "6379"
       JWT_SECRET: "super-secret-scheduling-jwt-key-2026-secure-token"
       JWT_EXPIRES_IN_HOURS: "72"
+      ASAAS_API_KEY: "$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OjQ1NjY2ZDQ4LWQxM2YtNDA1YS1hMmRjLTE0MjQ5NTQwNzJhNTo6JGFhY2hfOTVkODc0YmYtOWIyYi00YWEwLWFlZjYtMjgxY2YwYmQ1OTQy"
+      ASAAS_BASE_URL: "https://sandbox.asaas.com/api/v3"
+      ASAAS_WEBHOOK_SECRET: "whsec_hhwwxdTmKX30aXHwqiSGB9jtv9zYbM8IAo-oCDNeSdg"
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,6 +92,9 @@ services:
       DB_NAME: "sistema_agendamento"
       REDIS_HOST: "redis"
       REDIS_PORT: "6379"
+      ASAAS_API_KEY: "$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OjQ1NjY2ZDQ4LWQxM2YtNDA1YS1hMmRjLTE0MjQ5NTQwNzJhNTo6JGFhY2hfOTVkODc0YmYtOWIyYi00YWEwLWFlZjYtMjgxY2YwYmQ1OTQy"
+      ASAAS_BASE_URL: "https://sandbox.asaas.com/api/v3"
+      ASAAS_WEBHOOK_SECRET: "whsec_hhwwxdTmKX30aXHwqiSGB9jtv9zYbM8IAo-oCDNeSdg"
     depends_on:
       postgres:
         condition: service_healthy
@@ -106,7 +112,6 @@ services:
     restart: unless-stopped
     ports:
       - "5173:80"
-      - "80:80"
     depends_on:
       - backend
 

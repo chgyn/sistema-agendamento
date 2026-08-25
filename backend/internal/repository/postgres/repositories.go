@@ -34,6 +34,9 @@ func (r *Repository) GetTenantByID(ctx context.Context, id uuid.UUID) (*domain.T
 	if err := r.db.WithContext(ctx).
 		Preload("Subscription").
 		Preload("Subscription.Plan").
+		Preload("Subscription.Invoices", func(db *gorm.DB) *gorm.DB {
+			return db.Order("due_date desc")
+		}).
 		First(&tenant, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrTenantNotFound
@@ -107,7 +110,9 @@ func (r *Repository) UpdateTenantStatus(ctx context.Context, tenantID uuid.UUID,
 
 func (r *Repository) ListTenants(ctx context.Context, search string, onlyActive *bool) ([]domain.Tenant, error) {
 	var tenants []domain.Tenant
-	query := r.db.WithContext(ctx).Model(&domain.Tenant{})
+	query := r.db.WithContext(ctx).Model(&domain.Tenant{}).
+		Preload("Subscription").
+		Preload("Subscription.Plan")
 
 	if search != "" {
 		s := "%" + search + "%"

@@ -10,9 +10,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/google/uuid"
+	"github.com/sistema-agendamento/backend/internal/config"
 	"github.com/sistema-agendamento/backend/internal/domain"
 	"github.com/sistema-agendamento/backend/internal/handler"
 	"github.com/sistema-agendamento/backend/internal/repository/postgres"
+	"github.com/sistema-agendamento/backend/internal/service"
 	"github.com/sistema-agendamento/backend/pkg/hash"
 	"github.com/sistema-agendamento/backend/pkg/jwt"
 	"gorm.io/gorm"
@@ -40,19 +42,32 @@ func setupTestApp(t *testing.T) (*gin.Engine, *postgres.Repository, *jwt.JWTServ
 		&domain.Appointment{},
 		&domain.AppointmentStatusHistory{},
 		&domain.AuditLog{},
+		&domain.Plan{},
+		&domain.Subscription{},
+		&domain.SubscriptionInvoice{},
 	)
 
 	repo := postgres.NewRepository(db)
 	jwtSvc := jwt.NewJWTService("super-secret-test-key-32-chars-long", 24)
 	userHandler := handler.NewUserHandler(repo)
 	tenantHandler := handler.NewTenantHandler(repo)
+	planService := service.NewPlanService(repo)
+	planHandler := handler.NewPlanHandler(planService)
+	subService := service.NewSubscriptionService(repo, nil)
+	subHandler := handler.NewSubscriptionHandler(subService)
+	cfg := &config.Config{AsaasWebhookSecret: "test-secret"}
+	webhookHandler := handler.NewWebhookHandler(cfg, nil, subService)
 
 	r := gin.New()
 	handler.SetupRoutes(handler.RouterConfig{
-		Engine:        r,
-		JWTService:    jwtSvc,
-		UserHandler:   userHandler,
-		TenantHandler: tenantHandler,
+		Engine:              r,
+		JWTService:          jwtSvc,
+		Repo:                repo,
+		UserHandler:         userHandler,
+		TenantHandler:       tenantHandler,
+		PlanHandler:         planHandler,
+		SubscriptionHandler: subHandler,
+		WebhookHandler:      webhookHandler,
 	})
 
 	return r, repo, jwtSvc
