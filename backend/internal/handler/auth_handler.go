@@ -24,9 +24,9 @@ func NewAuthHandler(authService *service.AuthService, repo *postgres.Repository)
 	}
 }
 
-// RegisterTenant cria um novo estabelecimento e usuário administrador (Onboarding)
+// RegisterTenant cria um novo estabelecimento, usuário administrador e assinatura (Onboarding)
 func (h *AuthHandler) RegisterTenant(c *gin.Context) {
-	var dto service.RegisterTenantDTO
+	var dto domain.RegisterTenantWithPlanDTO
 	if err := c.ShouldBindJSON(&dto); err != nil {
 		response.BadRequest(c, "Dados inválidos: "+err.Error())
 		return
@@ -36,6 +36,10 @@ func (h *AuthHandler) RegisterTenant(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, domain.ErrSlugAlreadyExists) || errors.Is(err, domain.ErrEmailAlreadyExists) {
 			response.Conflict(c, err.Error())
+			return
+		}
+		if errors.Is(err, domain.ErrPlanNotFound) {
+			response.BadRequest(c, "Plano selecionado não foi encontrado ou está inativo")
 			return
 		}
 		response.InternalServerError(c, "Falha ao registrar estabelecimento: "+err.Error())
@@ -66,7 +70,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	response.Success(c, res, "Login efetuado com sucesso")
 }
 
-// Me retorna os dados do usuário autenticado e seu tenant
+// Me retorna os dados do usuário autenticado, seu tenant e assinatura
 func (h *AuthHandler) Me(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -81,12 +85,17 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	}
 
 	var tenant *domain.Tenant
+	var sub *domain.Subscription
 	if user.TenantID != nil && *user.TenantID != uuid.Nil {
 		tenant, _ = h.repo.GetTenantByID(c.Request.Context(), *user.TenantID)
+		if tenant != nil {
+			sub, _ = h.repo.GetSubscriptionByTenantID(c.Request.Context(), tenant.ID)
+		}
 	}
 
 	response.Success(c, gin.H{
-		"user":   user,
-		"tenant": tenant,
+		"user":         user,
+		"tenant":       tenant,
+		"subscription": sub,
 	})
 }

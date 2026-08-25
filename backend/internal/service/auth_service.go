@@ -12,47 +12,55 @@ import (
 	"github.com/sistema-agendamento/backend/pkg/jwt"
 )
 
-type RegisterTenantDTO struct {
-	TenantName  string `json:"tenant_name" binding:"required"`
-	Slug        string `json:"slug" binding:"required"`
-	Document    string `json:"document"`
-	Phone       string `json:"phone" binding:"required"`
-	City        string `json:"city"`
-	State       string `json:"state"`
-	AdminName   string `json:"admin_name" binding:"required"`
-	AdminEmail  string `json:"admin_email" binding:"required,email"`
-	Password    string `json:"password" binding:"required,min=6"`
-}
-
 type LoginDTO struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
 }
 
 type AuthResponse struct {
-	Token  string       `json:"token"`
-	User   *domain.User `json:"user"`
-	Tenant *domain.Tenant `json:"tenant"`
+	Token        string               `json:"token"`
+	User         *domain.User         `json:"user"`
+	Tenant       *domain.Tenant       `json:"tenant"`
+	Subscription *domain.Subscription `json:"subscription,omitempty"`
 }
 
 type AuthService struct {
-	repo       *postgres.Repository
-	jwtService *jwt.JWTService
+	repo                *postgres.Repository
+	jwtService          *jwt.JWTService
+	subscriptionService *SubscriptionService
 }
 
-func NewAuthService(repo *postgres.Repository, jwtSvc *jwt.JWTService) *AuthService {
+func NewAuthService(repo *postgres.Repository, jwtSvc *jwt.JWTService, subService *SubscriptionService) *AuthService {
 	return &AuthService{
-		repo:       repo,
-		jwtService: jwtSvc,
+		repo:                repo,
+		jwtService:          jwtSvc,
+		subscriptionService: subService,
 	}
 }
 
-func (s *AuthService) RegisterTenant(ctx context.Context, dto RegisterTenantDTO) (*AuthResponse, error) {
+func (s *AuthService) RegisterTenant(ctx context.Context, dto domain.RegisterTenantWithPlanDTO) (*AuthResponse, error) {
 	slug := strings.ToLower(strings.TrimSpace(dto.Slug))
 
 	passHash, err := hash.HashPassword(dto.Password)
 	if err != nil {
 		return nil, err
+	}
+
+	// Valida existência do plano selecionado
+	var plan *domain.Plan
+	if dto.PlanID != uuid.Nil {
+		plan, err = s.repo.GetPlanByID(ctx, dto.PlanID)
+		if err != nil {
+			return nil, domain.ErrPlanNotFound
+		}
+	} else {
+		// Se não foi fornecido (fallback), busca o primeiro plano ativo
+		active := true
+		plans, err := s.repo.ListPlans(ctx, "", &active)
+		if err != nil || len(plans) == 0 {
+			return nil, domain.ErrPlanNotFound
+		}
+		plan = &plans[0]
 	}
 
 	tenantID := uuid.New()
@@ -91,15 +99,28 @@ func (s *AuthService) RegisterTenant(ctx context.Context, dto RegisterTenantDTO)
 		return nil, err
 	}
 
+	// Criação da assinatura vinculada ao plano e Asaas
+	var subscription *domain.Subscription
+	if s.subscriptionService != nil {
+		sub, err := s.subscriptionService.CreateTenantSubscription(ctx, &tenant, plan, &user)
+		if err != nil {
+			// Não bloqueia o cadastro do tenant caso a API Asaas esteja offline em dev, sub persiste em mock
+			return nil, err
+		}
+		subscription = sub
+		tenant.Subscription = sub
+	}
+
 	token, err := s.jwtService.GenerateToken(&user)
 	if err != nil {
 		return nil, err
 	}
 
 	return &AuthResponse{
-		Token:  token,
-		User:   &user,
-		Tenant: &tenant,
+		Token:        token,
+		User:         &user,
+		Tenant:       &tenant,
+		Subscription: subscription,
 	}, nil
 }
 
@@ -118,10 +139,14 @@ func (s *AuthService) Login(ctx context.Context, dto LoginDTO) (*AuthResponse, e
 	}
 
 	var tenant *domain.Tenant
+	var sub *domain.Subscription
 	if user.TenantID != nil && *user.TenantID != uuid.Nil {
 		tenant, err = s.repo.GetTenantByID(ctx, *user.TenantID)
 		if err != nil {
 			return nil, domain.ErrTenantNotFound
+		}
+		if tenant != nil {
+			sub, _ = s.repo.GetSubscriptionByTenantID(ctx, tenant.ID)
 		}
 	}
 
@@ -131,8 +156,9 @@ func (s *AuthService) Login(ctx context.Context, dto LoginDTO) (*AuthResponse, e
 	}
 
 	return &AuthResponse{
-		Token:  token,
-		User:   user,
-		Tenant: tenant,
+		Token:        token,
+		User:         user,
+		Tenant:       tenant,
+		Subscription: sub,
 	}, nil
 }

@@ -72,6 +72,15 @@
             </RouterLink>
 
             <RouterLink
+              to="/admin/planos"
+              class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition"
+              :class="isActive('/admin/planos') ? 'bg-purple-600 text-white font-bold shadow-md shadow-purple-600/20' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
+            >
+              <CreditCard class="w-4 h-4 shrink-0" />
+              <span>Planos de Assinatura</span>
+            </RouterLink>
+
+            <RouterLink
               to="/admin/usuarios"
               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition"
               :class="isActive('/admin/usuarios') ? 'bg-purple-600 text-white font-bold shadow-md shadow-purple-600/20' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
@@ -139,6 +148,15 @@
             >
               <UserSquare2 class="w-4 h-4 shrink-0" />
               <span>Clientes</span>
+            </RouterLink>
+
+            <RouterLink
+              to="/admin/minha-assinatura"
+              class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition"
+              :class="isActive('/admin/minha-assinatura') ? 'bg-emerald-500 text-slate-950 font-bold shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
+            >
+              <CreditCard class="w-4 h-4 shrink-0" />
+              <span>Minha Assinatura</span>
             </RouterLink>
 
             <RouterLink
@@ -233,7 +251,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Scissors, LayoutDashboard, Calendar, Sparkles, Users, UsersRound,
-  UserSquare2, Settings, ExternalLink, LogOut, Building2, ShieldCheck
+  UserSquare2, Settings, ExternalLink, LogOut, Building2, ShieldCheck, CreditCard
 } from 'lucide-vue-next'
 import { useAuthStore } from '../../stores/auth'
 

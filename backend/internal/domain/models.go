@@ -52,7 +52,92 @@ var (
 	ErrCannotManageOtherTenantUser = errors.New("você não tem permissão para gerenciar usuários de outro estabelecimento")
 	ErrCannotCreateGlobalAdmin     = errors.New("somente administradores gerais podem cadastrar outros administradores gerais")
 	ErrTenantRequired              = errors.New("o estabelecimento é obrigatório para este perfil de usuário")
+	ErrPlanNotFound                = errors.New("plano de assinatura não encontrado")
+	ErrPlanHasSubscribers          = errors.New("não é possível excluir um plano com estabelecimentos vinculados")
+	ErrSubscriptionNotFound        = errors.New("assinatura do estabelecimento não encontrada")
+	ErrSubscriptionRequired        = errors.New("assinatura pendente ou inativa. Regularize seu plano para acessar todos os recursos")
 )
+
+// PlanBillingCycle periodicidade comercial suportada pelo Asaas
+type PlanBillingCycle string
+
+const (
+	CycleMonthly    PlanBillingCycle = "MONTHLY"
+	CycleQuarterly  PlanBillingCycle = "QUARTERLY"
+	CycleSemiannual PlanBillingCycle = "SEMIANNUALLY"
+	CycleYearly     PlanBillingCycle = "YEARLY"
+)
+
+// SubscriptionStatus status do ciclo de vida da assinatura do estabelecimento
+type SubscriptionStatus string
+
+const (
+	SubscriptionStatusActive    SubscriptionStatus = "ACTIVE"
+	SubscriptionStatusPending   SubscriptionStatus = "PENDING"
+	SubscriptionStatusOverdue   SubscriptionStatus = "OVERDUE"
+	SubscriptionStatusCancelled SubscriptionStatus = "CANCELLED"
+	SubscriptionStatusExpired   SubscriptionStatus = "EXPIRED"
+	SubscriptionStatusTrial     SubscriptionStatus = "TRIAL"
+)
+
+// Plan representa a oferta comercial cadastrada pelo Administrador Geral
+type Plan struct {
+	ID               uuid.UUID        `gorm:"type:uuid;primaryKey" json:"id"`
+	Name             string           `gorm:"type:varchar(150);not null" json:"name"`
+	Description      string           `gorm:"type:text" json:"description"`
+	Price            float64          `gorm:"type:decimal(10,2);not null" json:"price"`
+	BillingCycle     PlanBillingCycle `gorm:"type:varchar(30);default:'MONTHLY';not null" json:"billing_cycle"`
+	MaxProfessionals int              `gorm:"default:0" json:"max_professionals"` // 0 = ilimitado
+	MaxServices      int              `gorm:"default:0" json:"max_services"`      // 0 = ilimitado
+	Features         string           `gorm:"type:text" json:"features"`          // JSON string de benefícios
+	IsActive         bool             `gorm:"default:true;index" json:"is_active"`
+	SortOrder        int              `gorm:"default:0" json:"sort_order"`
+	CreatedAt        time.Time        `json:"created_at"`
+	UpdatedAt        time.Time        `json:"updated_at"`
+
+	Subscriptions []Subscription `gorm:"foreignKey:PlanID" json:"subscriptions,omitempty"`
+}
+
+// Subscription representa o contrato de assinatura ativo de um Tenant integrado com Asaas
+type Subscription struct {
+	ID                  uuid.UUID          `gorm:"type:uuid;primaryKey" json:"id"`
+	TenantID            uuid.UUID          `gorm:"type:uuid;uniqueIndex;not null" json:"tenant_id"`
+	PlanID              uuid.UUID          `gorm:"type:uuid;index;not null" json:"plan_id"`
+	AsaasCustomerID     string             `gorm:"type:varchar(100);index" json:"asaas_customer_id"`
+	AsaasSubscriptionID string             `gorm:"type:varchar(100);index" json:"asaas_subscription_id"`
+	Status              SubscriptionStatus `gorm:"type:varchar(30);default:'PENDING';index;not null" json:"status"`
+	BillingCycle        PlanBillingCycle   `gorm:"type:varchar(30);not null" json:"billing_cycle"`
+	Price               float64            `gorm:"type:decimal(10,2);not null" json:"price"`
+	NextDueDate         *time.Time         `gorm:"index" json:"next_due_date,omitempty"`
+	CurrentPeriodEnd    *time.Time         `json:"current_period_end,omitempty"`
+	PaymentMethod       string             `gorm:"type:varchar(30);default:'UNDEFINED'" json:"payment_method"`
+	PaymentURL          string             `gorm:"type:text" json:"payment_url,omitempty"`
+	CreatedAt           time.Time          `json:"created_at"`
+	UpdatedAt           time.Time          `json:"updated_at"`
+
+	Tenant   *Tenant               `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
+	Plan     *Plan                 `gorm:"foreignKey:PlanID" json:"plan,omitempty"`
+	Invoices []SubscriptionInvoice `gorm:"foreignKey:SubscriptionID" json:"invoices,omitempty"`
+}
+
+// SubscriptionInvoice histórico de faturas e cobranças geradas no Asaas
+type SubscriptionInvoice struct {
+	ID             uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	TenantID       uuid.UUID `gorm:"type:uuid;index;not null" json:"tenant_id"`
+	SubscriptionID uuid.UUID `gorm:"type:uuid;index;not null" json:"subscription_id"`
+	AsaasPaymentID string    `gorm:"type:varchar(100);uniqueIndex;not null" json:"asaas_payment_id"`
+	Status         string    `gorm:"type:varchar(30);not null" json:"status"` // PENDING, RECEIVED, CONFIRMED, OVERDUE
+	Value          float64   `gorm:"type:decimal(10,2);not null" json:"value"`
+	NetValue       float64   `gorm:"type:decimal(10,2)" json:"net_value"`
+	BillingType    string    `gorm:"type:varchar(30)" json:"billing_type"`
+	DueDate        time.Time `json:"due_date"`
+	PaymentDate    *time.Time `json:"payment_date,omitempty"`
+	InvoiceURL     string    `gorm:"type:text" json:"invoice_url"`
+	BankSlipURL    string    `gorm:"type:text" json:"bank_slip_url,omitempty"`
+	PixQRCodeURL   string    `gorm:"type:text" json:"pix_qr_code_url,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
 
 // Tenant representa a barbearia ou salão de beleza (conta isolada)
 type Tenant struct {
@@ -75,6 +160,7 @@ type Tenant struct {
 	Users         []User         `gorm:"foreignKey:TenantID" json:"users,omitempty"`
 	Professionals []Professional `gorm:"foreignKey:TenantID" json:"professionals,omitempty"`
 	Services      []Service      `gorm:"foreignKey:TenantID" json:"services,omitempty"`
+	Subscription  *Subscription  `gorm:"foreignKey:TenantID" json:"subscription,omitempty"`
 }
 
 // User representa os operadores, administradores de tenant ou administradores gerais

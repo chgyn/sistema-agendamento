@@ -16,6 +16,7 @@ const (
 	TypeSendBookingConfirmation = "task:send_booking_confirmation"
 	TypeSendBookingReminder     = "task:send_booking_reminder"
 	TypeAutoCancelPending       = "task:auto_cancel_pending"
+	TypeProcessAsaasWebhook     = "task:process_asaas_webhook"
 )
 
 type BookingConfirmationPayload struct {
@@ -28,6 +29,12 @@ type BookingConfirmationPayload struct {
 	ProfessionalName string   `json:"professional_name"`
 	StartAt         time.Time `json:"start_at"`
 	TotalPrice      float64   `json:"total_price"`
+}
+
+type AsaasWebhookTaskPayload struct {
+	Event        string                 `json:"event"`
+	Payment      map[string]interface{} `json:"payment,omitempty"`
+	Subscription map[string]interface{} `json:"subscription,omitempty"`
 }
 
 type QueueClient struct {
@@ -71,6 +78,27 @@ func (q *QueueClient) EnqueueBookingConfirmation(ctx context.Context, payload Bo
 	return nil
 }
 
+// EnqueueAsaasWebhook enfileira a notificação de webhook do Asaas
+func (q *QueueClient) EnqueueAsaasWebhook(ctx context.Context, payload AsaasWebhookTaskPayload) error {
+	if q.client == nil {
+		return nil
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	task := asynq.NewTask(TypeProcessAsaasWebhook, data, asynq.MaxRetry(5), asynq.Timeout(30*time.Second), asynq.Queue("critical"))
+	info, err := q.client.EnqueueContext(ctx, task)
+	if err != nil {
+		log.Printf("⚠️ [Queue] Falha ao enfileirar task Asaas Webhook: %v", err)
+		return err
+	}
+
+	log.Printf("🚀 [Queue] Task Asaas Webhook enfileirada: ID=%s Event=%s", info.ID, payload.Event)
+	return nil
+}
+
 // StartWorkerServer inicia o servidor consumidor de tarefas do Asynq
 func StartWorkerServer(cfg *config.Config) (*asynq.Server, error) {
 	redisAddr := fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort)
@@ -93,6 +121,7 @@ func StartWorkerServer(cfg *config.Config) (*asynq.Server, error) {
 	mux.HandleFunc(TypeSendBookingConfirmation, HandleBookingConfirmationTask)
 	mux.HandleFunc(TypeSendBookingReminder, HandleBookingReminderTask)
 	mux.HandleFunc(TypeAutoCancelPending, HandleAutoCancelPendingTask)
+	mux.HandleFunc(TypeProcessAsaasWebhook, HandleProcessAsaasWebhookTask)
 
 	log.Println("👷 [Worker] Asynq worker server pronto e ouvindo filas Redis...")
 	return srv, srv.Run(mux)
@@ -118,5 +147,15 @@ func HandleBookingReminderTask(ctx context.Context, t *asynq.Task) error {
 
 func HandleAutoCancelPendingTask(ctx context.Context, t *asynq.Task) error {
 	log.Printf("🧹 [AUTO-CANCEL] Verificação de agendamentos pendentes expirados executada.")
+	return nil
+}
+
+func HandleProcessAsaasWebhookTask(ctx context.Context, t *asynq.Task) error {
+	var p AsaasWebhookTaskPayload
+	if err := json.Unmarshal(t.Payload(), &p); err != nil {
+		return fmt.Errorf("json.Unmarshal falhou no webhook Asaas: %v: %w", err, asynq.SkipRetry)
+	}
+
+	log.Printf("⚡ [Worker Asynq] Processando evento Webhook Asaas: %s", p.Event)
 	return nil
 }

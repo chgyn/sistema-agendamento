@@ -15,6 +15,8 @@ import SettingsView from '../views/admin/SettingsView.vue'
 import TenantsManagementView from '../views/admin/TenantsManagementView.vue'
 import UsersManagementView from '../views/admin/UsersManagementView.vue'
 import GlobalAdminsView from '../views/admin/GlobalAdminsView.vue'
+import PlansManagementView from '../views/admin/PlansManagementView.vue'
+import SubscriptionBillingView from '../views/admin/SubscriptionBillingView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -58,6 +60,18 @@ const router = createRouter({
           name: 'admin-tenants',
           component: TenantsManagementView,
           meta: { roles: ['ADMIN_GLOBAL'] },
+        },
+        {
+          path: 'planos',
+          name: 'admin-plans',
+          component: PlansManagementView,
+          meta: { roles: ['ADMIN_GLOBAL'] },
+        },
+        {
+          path: 'minha-assinatura',
+          name: 'admin-subscription-billing',
+          component: SubscriptionBillingView,
+          meta: { roles: ['ADMIN_GLOBAL', 'ADMIN_TENANT', 'ADMIN'] },
         },
         {
           path: 'administradores-globais',

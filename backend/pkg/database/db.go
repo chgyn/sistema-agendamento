@@ -63,6 +63,9 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 		&domain.Appointment{},
 		&domain.AppointmentStatusHistory{},
 		&domain.AuditLog{},
+		&domain.Plan{},
+		&domain.Subscription{},
+		&domain.SubscriptionInvoice{},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("falha na migração do banco: %w", err)
@@ -99,6 +102,73 @@ func SeedInitialData(db *gorm.DB) error {
 		}
 	}
 
+	// 0.1 Garante existência de Planos Comerciais Padrão
+	var planCount int64
+	db.Model(&domain.Plan{}).Count(&planCount)
+	var defaultPlanID uuid.UUID
+	if planCount == 0 {
+		planBasicoID := uuid.New()
+		defaultPlanID = planBasicoID
+		planProID := uuid.New()
+		planPremiumID := uuid.New()
+
+		plans := []domain.Plan{
+			{
+				ID:               planBasicoID,
+				Name:             "Plano Starter",
+				Description:      "Ideal para profissionais autônomos e barbearias individuais que buscam praticidade.",
+				Price:            49.90,
+				BillingCycle:     domain.CycleMonthly,
+				MaxProfessionals: 1,
+				MaxServices:      10,
+				Features:         `["1 Profissional", "Até 10 Serviços", "Agendamento Online 24/7", "Lembretes no WhatsApp", "Painel Básico"]`,
+				IsActive:         true,
+				SortOrder:        1,
+				CreatedAt:        time.Now(),
+				UpdatedAt:        time.Now(),
+			},
+			{
+				ID:               planProID,
+				Name:             "Plano Profissional",
+				Description:      "O plano mais popular para estabelecimentos em crescimento com equipe.",
+				Price:            99.90,
+				BillingCycle:     domain.CycleMonthly,
+				MaxProfessionals: 5,
+				MaxServices:      30,
+				Features:         `["Até 5 Profissionais", "Até 30 Serviços", "Agendamento Online 24/7", "Lembretes Automáticos", "Relatórios Financeiros", "Suporte Prioritário"]`,
+				IsActive:         true,
+				SortOrder:        2,
+				CreatedAt:        time.Now(),
+				UpdatedAt:        time.Now(),
+			},
+			{
+				ID:               planPremiumID,
+				Name:             "Plano Scale / VIP",
+				Description:      "Para salões de grande porte e redes com múltiplos profissionais e alta demanda.",
+				Price:            189.90,
+				BillingCycle:     domain.CycleMonthly,
+				MaxProfessionals: 0, // Ilimitado
+				MaxServices:      0, // Ilimitado
+				Features:         `["Profissionais Ilimitados", "Serviços Ilimitados", "Personalização Completa", "Taxa Zero por Agendamento", "API & Webhooks", "Gerente de Conta"]`,
+				IsActive:         true,
+				SortOrder:        3,
+				CreatedAt:        time.Now(),
+				UpdatedAt:        time.Now(),
+			},
+		}
+
+		for _, p := range plans {
+			if err := db.Create(&p).Error; err != nil {
+				log.Printf("Aviso ao criar plano padrão: %v", err)
+			}
+		}
+		log.Println("💎 Planos de assinatura padrão cadastrados com sucesso!")
+	} else {
+		var firstPlan domain.Plan
+		db.First(&firstPlan)
+		defaultPlanID = firstPlan.ID
+	}
+
 	var count int64
 	db.Model(&domain.Tenant{}).Count(&count)
 	if count > 0 {
@@ -129,6 +199,25 @@ func SeedInitialData(db *gorm.DB) error {
 	if err := db.Create(&tenant1).Error; err != nil {
 		return err
 	}
+
+	// Assinatura Demo Tenant 1
+	sub1NextDue := time.Now().AddDate(0, 1, 0)
+	sub1 := domain.Subscription{
+		ID:                  uuid.New(),
+		TenantID:            tenant1ID,
+		PlanID:              defaultPlanID,
+		AsaasCustomerID:     "cus_demo_domnavalha",
+		AsaasSubscriptionID: "sub_demo_domnavalha",
+		Status:              domain.SubscriptionStatusActive,
+		BillingCycle:        domain.CycleMonthly,
+		Price:               99.90,
+		NextDueDate:         &sub1NextDue,
+		PaymentMethod:       "PIX",
+		PaymentURL:          "https://sandbox.asaas.com/payment/mock",
+		CreatedAt:           time.Now(),
+		UpdatedAt:           time.Now(),
+	}
+	db.Create(&sub1)
 
 	// Usuários Tenant 1
 	admin1 := domain.User{
@@ -441,7 +530,28 @@ func SeedInitialData(db *gorm.DB) error {
 		CreatedAt:           time.Now(),
 		UpdatedAt:           time.Now(),
 	}
-	db.Create(&tenant2)
+	if err := db.Create(&tenant2).Error; err != nil {
+		return err
+	}
+
+	// Assinatura Demo Tenant 2
+	sub2NextDue := time.Now().AddDate(0, 1, 0)
+	sub2 := domain.Subscription{
+		ID:                  uuid.New(),
+		TenantID:            tenant2ID,
+		PlanID:              defaultPlanID,
+		AsaasCustomerID:     "cus_demo_bellavista",
+		AsaasSubscriptionID: "sub_demo_bellavista",
+		Status:              domain.SubscriptionStatusActive,
+		BillingCycle:        domain.CycleMonthly,
+		Price:               99.90,
+		NextDueDate:         &sub2NextDue,
+		PaymentMethod:       "CREDIT_CARD",
+		PaymentURL:          "https://sandbox.asaas.com/payment/mock",
+		CreatedAt:           time.Now(),
+		UpdatedAt:           time.Now(),
+	}
+	db.Create(&sub2)
 
 	admin2 := domain.User{
 		ID:           uuid.New(),

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sistema-agendamento/backend/internal/config"
 	"github.com/sistema-agendamento/backend/internal/handler"
+	"github.com/sistema-agendamento/backend/internal/integrations/asaas"
 	"github.com/sistema-agendamento/backend/internal/queue"
 	"github.com/sistema-agendamento/backend/internal/repository/postgres"
 	"github.com/sistema-agendamento/backend/internal/service"
@@ -40,14 +41,19 @@ func main() {
 	queueClient := queue.NewQueueClient(cfg)
 	defer queueClient.Close()
 
-	// 6. Inicializa Serviços
+	// 6. Inicializa Integrações Externas
+	asaasClient := asaas.NewClient(cfg.AsaasBaseURL, cfg.AsaasAPIKey)
+
+	// 7. Inicializa Serviços
 	jwtService := jwt.NewJWTService(cfg.JWTSecret, cfg.JWTExpiresIn)
-	authService := service.NewAuthService(repo, jwtService)
+	planService := service.NewPlanService(repo)
+	subService := service.NewSubscriptionService(repo, asaasClient)
+	authService := service.NewAuthService(repo, jwtService, subService)
 	availService := service.NewAvailabilityService(repo)
 	aptService := service.NewAppointmentService(repo, queueClient)
 	tenantService := service.NewTenantService(repo)
 
-	// 7. Inicializa Handlers
+	// 8. Inicializa Handlers
 	authHandler := handler.NewAuthHandler(authService, repo)
 	publicBookingHandler := handler.NewPublicBookingHandler(repo, availService, aptService)
 	appointmentHandler := handler.NewAppointmentHandler(aptService, repo)
@@ -57,12 +63,16 @@ func main() {
 	dashboardHandler := handler.NewDashboardHandler(tenantService)
 	tenantHandler := handler.NewTenantHandler(repo)
 	userHandler := handler.NewUserHandler(repo)
+	planHandler := handler.NewPlanHandler(planService)
+	subHandler := handler.NewSubscriptionHandler(subService)
+	webhookHandler := handler.NewWebhookHandler(cfg, queueClient, subService)
 
-	// 8. Configura Router Gin
+	// 9. Configura Router Gin
 	r := gin.Default()
 	handler.SetupRoutes(handler.RouterConfig{
 		Engine:               r,
 		JWTService:           jwtService,
+		Repo:                 repo,
 		AuthHandler:          authHandler,
 		PublicBookingHandler: publicBookingHandler,
 		AppointmentHandler:   appointmentHandler,
@@ -72,9 +82,12 @@ func main() {
 		DashboardHandler:     dashboardHandler,
 		TenantHandler:        tenantHandler,
 		UserHandler:          userHandler,
+		PlanHandler:          planHandler,
+		SubscriptionHandler:  subHandler,
+		WebhookHandler:       webhookHandler,
 	})
 
-	// 9. Inicia Servidor HTTP
+	// 10. Inicia Servidor HTTP
 	addr := ":" + cfg.Port
 	log.Printf("⚡ Servidor HTTP ouvindo na porta %s (Ambiente: %s)", cfg.Port, cfg.Environment)
 	log.Printf("🔗 Link público demo: http://localhost:%s/api/v1/public/dom-navalha", cfg.Port)

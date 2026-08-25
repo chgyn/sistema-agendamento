@@ -31,7 +31,10 @@ func (r *Repository) DB() *gorm.DB {
 
 func (r *Repository) GetTenantByID(ctx context.Context, id uuid.UUID) (*domain.Tenant, error) {
 	var tenant domain.Tenant
-	if err := r.db.WithContext(ctx).First(&tenant, "id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).
+		Preload("Subscription").
+		Preload("Subscription.Plan").
+		First(&tenant, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrTenantNotFound
 		}
@@ -45,6 +48,8 @@ func (r *Repository) GetTenantBySlug(ctx context.Context, slug string) (*domain.
 	if err := r.db.WithContext(ctx).
 		Preload("Services", "is_active = ?", true).
 		Preload("Professionals", "is_active = ?", true).
+		Preload("Subscription").
+		Preload("Subscription.Plan").
 		First(&tenant, "slug = ? AND is_active = ?", slug, true).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrTenantNotFound
@@ -702,3 +707,172 @@ func (r *Repository) RescheduleAppointment(ctx context.Context, tenantID, id uui
 		return tx.Create(&history).Error
 	})
 }
+
+// -------------------------------------------------------------
+// PLAN REPOSITORY
+// -------------------------------------------------------------
+
+func (r *Repository) GetPlanByID(ctx context.Context, id uuid.UUID) (*domain.Plan, error) {
+	var plan domain.Plan
+	if err := r.db.WithContext(ctx).First(&plan, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrPlanNotFound
+		}
+		return nil, err
+	}
+	return &plan, nil
+}
+
+func (r *Repository) ListPlans(ctx context.Context, search string, onlyActive *bool) ([]domain.Plan, error) {
+	var plans []domain.Plan
+	query := r.db.WithContext(ctx).Model(&domain.Plan{})
+
+	if search != "" {
+		s := "%" + search + "%"
+		query = query.Where("name ILIKE ? OR description ILIKE ?", s, s)
+	}
+
+	if onlyActive != nil {
+		query = query.Where("is_active = ?", *onlyActive)
+	}
+
+	err := query.Order("sort_order asc, price asc").Find(&plans).Error
+	return plans, err
+}
+
+func (r *Repository) CreatePlan(ctx context.Context, plan *domain.Plan) error {
+	return r.db.WithContext(ctx).Create(plan).Error
+}
+
+func (r *Repository) UpdatePlan(ctx context.Context, plan *domain.Plan) error {
+	return r.db.WithContext(ctx).Save(plan).Error
+}
+
+func (r *Repository) UpdatePlanStatus(ctx context.Context, planID uuid.UUID, isActive bool) error {
+	return r.db.WithContext(ctx).Model(&domain.Plan{}).
+		Where("id = ?", planID).
+		Update("is_active", isActive).Error
+}
+
+func (r *Repository) DeletePlan(ctx context.Context, planID uuid.UUID) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var subCount int64
+		if err := tx.Model(&domain.Subscription{}).Where("plan_id = ?", planID).Count(&subCount).Error; err != nil {
+			return err
+		}
+		if subCount > 0 {
+			return domain.ErrPlanHasSubscribers
+		}
+		return tx.Delete(&domain.Plan{}, "id = ?", planID).Error
+	})
+}
+
+// -------------------------------------------------------------
+// SUBSCRIPTION REPOSITORY
+// -------------------------------------------------------------
+
+func (r *Repository) GetSubscriptionByID(ctx context.Context, id uuid.UUID) (*domain.Subscription, error) {
+	var sub domain.Subscription
+	if err := r.db.WithContext(ctx).
+		Preload("Tenant").
+		Preload("Plan").
+		Preload("Invoices", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at desc")
+		}).
+		First(&sub, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrSubscriptionNotFound
+		}
+		return nil, err
+	}
+	return &sub, nil
+}
+
+func (r *Repository) GetSubscriptionByTenantID(ctx context.Context, tenantID uuid.UUID) (*domain.Subscription, error) {
+	var sub domain.Subscription
+	if err := r.db.WithContext(ctx).
+		Preload("Tenant").
+		Preload("Plan").
+		Preload("Invoices", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at desc")
+		}).
+		First(&sub, "tenant_id = ?", tenantID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrSubscriptionNotFound
+		}
+		return nil, err
+	}
+	return &sub, nil
+}
+
+func (r *Repository) GetSubscriptionByAsaasID(ctx context.Context, asaasSubID string) (*domain.Subscription, error) {
+	var sub domain.Subscription
+	if err := r.db.WithContext(ctx).
+		Preload("Tenant").
+		Preload("Plan").
+		First(&sub, "asaas_subscription_id = ?", asaasSubID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrSubscriptionNotFound
+		}
+		return nil, err
+	}
+	return &sub, nil
+}
+
+func (r *Repository) CreateSubscription(ctx context.Context, sub *domain.Subscription) error {
+	return r.db.WithContext(ctx).Create(sub).Error
+}
+
+func (r *Repository) UpdateSubscription(ctx context.Context, sub *domain.Subscription) error {
+	return r.db.WithContext(ctx).Save(sub).Error
+}
+
+func (r *Repository) UpdateSubscriptionStatus(ctx context.Context, subID uuid.UUID, status domain.SubscriptionStatus) error {
+	return r.db.WithContext(ctx).Model(&domain.Subscription{}).
+		Where("id = ?", subID).
+		Updates(map[string]interface{}{
+			"status":     status,
+			"updated_at": time.Now(),
+		}).Error
+}
+
+func (r *Repository) ListAllSubscriptions(ctx context.Context, status string, search string) ([]domain.Subscription, error) {
+	var subs []domain.Subscription
+	query := r.db.WithContext(ctx).Preload("Tenant").Preload("Plan")
+
+	if status != "" && status != "ALL" {
+		query = query.Where("status = ?", status)
+	}
+
+	if search != "" {
+		s := "%" + search + "%"
+		query = query.Joins("JOIN tenants ON tenants.id = subscriptions.tenant_id").
+			Where("tenants.name ILIKE ? OR tenants.slug ILIKE ? OR subscriptions.asaas_subscription_id ILIKE ?", s, s, s)
+	}
+
+	err := query.Order("created_at desc").Find(&subs).Error
+	return subs, err
+}
+
+func (r *Repository) SaveSubscriptionInvoice(ctx context.Context, invoice *domain.SubscriptionInvoice) error {
+	var existing domain.SubscriptionInvoice
+	err := r.db.WithContext(ctx).First(&existing, "asaas_payment_id = ?", invoice.AsaasPaymentID).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return r.db.WithContext(ctx).Create(invoice).Error
+	} else if err != nil {
+		return err
+	}
+
+	invoice.ID = existing.ID
+	return r.db.WithContext(ctx).Save(invoice).Error
+}
+
+func (r *Repository) GetSubscriptionInvoices(ctx context.Context, subscriptionID uuid.UUID) ([]domain.SubscriptionInvoice, error) {
+	var invoices []domain.SubscriptionInvoice
+	err := r.db.WithContext(ctx).
+		Where("subscription_id = ?", subscriptionID).
+		Order("due_date desc").
+		Find(&invoices).Error
+	return invoices, err
+}
+

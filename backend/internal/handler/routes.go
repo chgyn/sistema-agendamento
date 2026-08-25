@@ -4,12 +4,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sistema-agendamento/backend/internal/domain"
 	"github.com/sistema-agendamento/backend/internal/middleware"
+	"github.com/sistema-agendamento/backend/internal/repository/postgres"
 	"github.com/sistema-agendamento/backend/pkg/jwt"
 )
 
 type RouterConfig struct {
 	Engine               *gin.Engine
 	JWTService           *jwt.JWTService
+	Repo                 *postgres.Repository
 	AuthHandler          *AuthHandler
 	PublicBookingHandler *PublicBookingHandler
 	AppointmentHandler   *AppointmentHandler
@@ -19,6 +21,9 @@ type RouterConfig struct {
 	DashboardHandler     *DashboardHandler
 	TenantHandler        *TenantHandler
 	UserHandler          *UserHandler
+	PlanHandler          *PlanHandler
+	SubscriptionHandler  *SubscriptionHandler
+	WebhookHandler       *WebhookHandler
 }
 
 func SetupRoutes(cfg RouterConfig) {
@@ -35,6 +40,16 @@ func SetupRoutes(cfg RouterConfig) {
 		api.GET("/health", func(c *gin.Context) {
 			c.JSON(200, gin.H{"status": "ok", "timestamp": "online"})
 		})
+
+		// -------------------------------------------------------------
+		// ROTAS PÚBLICAS DE PLANOS (CATÁLOGO PARA CADASTRO)
+		// -------------------------------------------------------------
+		api.GET("/public/plans", cfg.PlanHandler.ListActivePublic)
+
+		// -------------------------------------------------------------
+		// ROTAS DE WEBHOOKS (INTEGRAÇÃO EXTERNA COM ASAAS)
+		// -------------------------------------------------------------
+		api.POST("/webhooks/asaas", cfg.WebhookHandler.HandleAsaas)
 
 		// -------------------------------------------------------------
 		// ROTAS PÚBLICAS DE AGENDAMENTO (NÃO REQUEREM LOGIN)
@@ -86,6 +101,18 @@ func SetupRoutes(cfg RouterConfig) {
 				// Gestão de Administradores Gerais
 				globalOnly.GET("/global-admins", cfg.UserHandler.ListGlobalAdmins)
 				globalOnly.POST("/global-admins", cfg.UserHandler.CreateGlobalAdmin)
+
+				// Gestão Global de Planos Comerciais (CRUD Exclusivo)
+				globalOnly.GET("/plans", cfg.PlanHandler.List)
+				globalOnly.POST("/plans", cfg.PlanHandler.Create)
+				globalOnly.GET("/plans/:id", cfg.PlanHandler.GetByID)
+				globalOnly.PUT("/plans/:id", cfg.PlanHandler.Update)
+				globalOnly.PATCH("/plans/:id/status", cfg.PlanHandler.ToggleStatus)
+				globalOnly.DELETE("/plans/:id", cfg.PlanHandler.Delete)
+
+				// Gestão Global de Assinaturas
+				globalOnly.GET("/subscriptions", cfg.SubscriptionHandler.ListGlobal)
+				globalOnly.PATCH("/subscriptions/:id/status", cfg.SubscriptionHandler.OverrideStatus)
 			}
 
 			// ==========================================
@@ -102,48 +129,56 @@ func SetupRoutes(cfg RouterConfig) {
 			}
 
 			// ==========================================
-			// 3. RECURSOS DO TENANT (ADMIN & OPERADOR)
+			// 3. CONSULTA DE ASSINATURA DO TENANT (LIVRE DE GATEKEEPER)
 			// ==========================================
+			admin.GET("/subscription", cfg.SubscriptionHandler.GetMySubscription)
 
-			// Dashboard & Métricas do Tenant
-			admin.GET("/dashboard", cfg.DashboardHandler.GetKPIs)
+			// ==========================================
+			// 4. RECURSOS OPERACIONAIS DO TENANT (PROTEGIDOS POR ASSINATURA ATIVA)
+			// ==========================================
+			tenantOps := admin.Group("")
+			tenantOps.Use(middleware.RequireActiveSubscription(cfg.Repo))
+			{
+				// Dashboard & Métricas do Tenant
+				tenantOps.GET("/dashboard", cfg.DashboardHandler.GetKPIs)
 
-			// Agendamentos / Agenda (Operadores e Admins)
-			admin.GET("/appointments", cfg.AppointmentHandler.List)
-			admin.GET("/appointments/:id", cfg.AppointmentHandler.GetByID)
-			admin.POST("/appointments", cfg.AppointmentHandler.CreateAdmin)
-			admin.PATCH("/appointments/:id/complete", cfg.AppointmentHandler.Complete)
-			admin.PATCH("/appointments/:id/cancel", cfg.AppointmentHandler.Cancel)
-			admin.PATCH("/appointments/:id/reschedule", cfg.AppointmentHandler.Reschedule)
+				// Agendamentos / Agenda (Operadores e Admins)
+				tenantOps.GET("/appointments", cfg.AppointmentHandler.List)
+				tenantOps.GET("/appointments/:id", cfg.AppointmentHandler.GetByID)
+				tenantOps.POST("/appointments", cfg.AppointmentHandler.CreateAdmin)
+				tenantOps.PATCH("/appointments/:id/complete", cfg.AppointmentHandler.Complete)
+				tenantOps.PATCH("/appointments/:id/cancel", cfg.AppointmentHandler.Cancel)
+				tenantOps.PATCH("/appointments/:id/reschedule", cfg.AppointmentHandler.Reschedule)
 
-			// Serviços
-			admin.GET("/services", cfg.ServiceHandler.List)
-			admin.GET("/services/:id", cfg.ServiceHandler.GetByID)
-			admin.POST("/services", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ServiceHandler.Create)
-			admin.PUT("/services/:id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ServiceHandler.Update)
-			admin.DELETE("/services/:id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ServiceHandler.Delete)
+				// Serviços
+				tenantOps.GET("/services", cfg.ServiceHandler.List)
+				tenantOps.GET("/services/:id", cfg.ServiceHandler.GetByID)
+				tenantOps.POST("/services", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ServiceHandler.Create)
+				tenantOps.PUT("/services/:id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ServiceHandler.Update)
+				tenantOps.DELETE("/services/:id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ServiceHandler.Delete)
 
-			// Profissionais, Horários e Bloqueios
-			admin.GET("/professionals", cfg.ProfessionalHandler.List)
-			admin.GET("/professionals/:id", cfg.ProfessionalHandler.GetByID)
-			admin.POST("/professionals", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.Create)
-			admin.PUT("/professionals/:id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.Update)
-			admin.DELETE("/professionals/:id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.Delete)
+				// Profissionais, Horários e Bloqueios
+				tenantOps.GET("/professionals", cfg.ProfessionalHandler.List)
+				tenantOps.GET("/professionals/:id", cfg.ProfessionalHandler.GetByID)
+				tenantOps.POST("/professionals", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.Create)
+				tenantOps.PUT("/professionals/:id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.Update)
+				tenantOps.DELETE("/professionals/:id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.Delete)
 
-			admin.GET("/professionals/:id/working-hours", cfg.ProfessionalHandler.GetWorkingHours)
-			admin.PUT("/professionals/:id/working-hours", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.SaveWorkingHours)
+				tenantOps.GET("/professionals/:id/working-hours", cfg.ProfessionalHandler.GetWorkingHours)
+				tenantOps.PUT("/professionals/:id/working-hours", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.SaveWorkingHours)
 
-			admin.GET("/professionals/:id/exceptions", cfg.ProfessionalHandler.ListExceptions)
-			admin.POST("/professionals/:id/exceptions", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.CreateException)
-			admin.DELETE("/professionals/:id/exceptions/:exception_id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.DeleteException)
+				tenantOps.GET("/professionals/:id/exceptions", cfg.ProfessionalHandler.ListExceptions)
+				tenantOps.POST("/professionals/:id/exceptions", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.CreateException)
+				tenantOps.DELETE("/professionals/:id/exceptions/:exception_id", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.ProfessionalHandler.DeleteException)
 
-			// Clientes e Histórico
-			admin.GET("/customers", cfg.CustomerHandler.List)
-			admin.GET("/customers/:id", cfg.CustomerHandler.GetByID)
+				// Clientes e Histórico
+				tenantOps.GET("/customers", cfg.CustomerHandler.List)
+				tenantOps.GET("/customers/:id", cfg.CustomerHandler.GetByID)
 
-			// Configurações do Estabelecimento (Restrito a ADMIN_GLOBAL e ADMIN_TENANT)
-			admin.GET("/settings", cfg.TenantHandler.GetSettings)
-			admin.PUT("/settings", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.TenantHandler.UpdateSettings)
+				// Configurações do Estabelecimento (Restrito a ADMIN_GLOBAL e ADMIN_TENANT)
+				tenantOps.GET("/settings", cfg.TenantHandler.GetSettings)
+				tenantOps.PUT("/settings", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.TenantHandler.UpdateSettings)
+			}
 		}
 	}
 }
