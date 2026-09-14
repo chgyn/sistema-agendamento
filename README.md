@@ -6,18 +6,26 @@ Plataforma completa de agendamento de atendimentos desenvolvida com **Go (Gin Go
 
 ## 🚀 Novidades & Módulos Implementados
 
-1. **💳 Planos de Assinatura & Monetização SaaS:**
+1. **🤖 Integração WUZAPI, WhatsApp Multi-Tenant & Atendimento com IA:**
+   - Instância privada do **WUZAPI** diretamente no `docker-compose`, eliminando dependências de serviços de terceiros.
+   - Pareamento do número de WhatsApp de cada estabelecimento via **QR Code** no painel administrativo.
+   - Atendente virtual autônomo com **Function Calling** nativo (Google Gemini & OpenAI) para tirar dúvidas sobre serviços, consultar horários livres em tempo real e criar agendamentos com **Zero Alucinação**.
+   - **Criptografia AES-256-GCM** para armazenamento seguro de API Keys de IA de cada tenant.
+   - **Camada de Despacho Humanizado (`WhatsAppMessageDispatcher`)**: simulação de presença "digitando...", cálculo dinâmico de tempo de digitação e pausas orgânicas.
+   - Fila assíncrona **Asynq + Redis** para processamento desacoplado de webhooks sem bloqueio.
+
+2. **💳 Planos de Assinatura & Monetização SaaS:**
    - CRUD completo de planos comerciais restrito ao **Administrador Geral** (`ADMIN_GLOBAL`).
    - Suporte a múltiplas periodicidades (`MONTHLY`, `QUARTERLY`, `SEMIANNUALLY`, `YEARLY`), limites de profissionais/serviços e recursos configuráveis.
-2. **🔄 Integração com Gateway Asaas (API v3):**
+3. **🔄 Integração com Gateway Asaas (API v3):**
    - Criação automática de clientes e assinaturas recorrentes durante o cadastro do estabelecimento.
    - Processamento resiliente de Webhooks com filas **Asynq + Redis** (`critical`) para confirmação de pagamentos, geração de faturas e bloqueios por inadimplência.
-3. **🛡️ Gatekeeper de Acesso por Status de Assinatura:**
-   - Middleware `RequireActiveSubscription` protegendo rotas operacionais do tenant (`/appointments`, `/services`, `/professionals`, `/customers`).
-4. **📊 Visualização & Gestão da Situação da Assinatura dos Estabelecimentos:**
+4. **🛡️ Gatekeeper de Acesso por Status de Assinatura:**
+   - Middleware `RequireActiveSubscription` protegendo rotas operacionais do tenant (`/appointments`, `/services`, `/professionals`, `/customers`, `/whatsapp`).
+5. **📊 Visualização & Gestão da Situação da Assinatura dos Estabelecimentos:**
    - Tabela de estabelecimentos com identificadores de plano, status financeiro (Ativa, Pendente, Vencida, Cancelada) e filtros compostos.
    - Modal de detalhamento com resumo do plano, identificadores Asaas (`AsaasSubscriptionID`, `AsaasCustomerID`), histórico de faturas e ajuste manual de status.
-5. **🔒 Prevenção Concorrente de Dupla Reserva:**
+6. **🔒 Prevenção Concorrente de Dupla Reserva:**
    - Transações atômicas com `SELECT ... FOR UPDATE` no PostgreSQL e validação matemática de sobreposição de intervalos temporais.
 
 ---
@@ -139,5 +147,6 @@ npm run build
 
 ## 📚 Documentação Técnica Detalhada
 
+- [Módulo de WhatsApp, WUZAPI & Atendimento com IA](file:///home/charles/projetos/sistema-agendamento/docs/MODULO_WHATSAPP_WUZAPI_E_IA.md)
 - [Módulo de Planos & Assinaturas Asaas](file:///home/charles/projetos/sistema-agendamento/docs/MODULO_PLANOS_E_ASSINATURAS_ASAAS.md)
 - [Arquitetura, Concorrência & Catálogo de APIs](file:///home/charles/projetos/sistema-agendamento/docs/ARQUITETURA_E_API.md)
