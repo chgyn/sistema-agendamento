@@ -7,6 +7,7 @@ import (
 	"github.com/sistema-agendamento/backend/internal/config"
 	"github.com/sistema-agendamento/backend/internal/handler"
 	"github.com/sistema-agendamento/backend/internal/integrations/asaas"
+	"github.com/sistema-agendamento/backend/internal/integrations/wuzapi"
 	"github.com/sistema-agendamento/backend/internal/queue"
 	"github.com/sistema-agendamento/backend/internal/repository/postgres"
 	"github.com/sistema-agendamento/backend/internal/service"
@@ -43,6 +44,7 @@ func main() {
 
 	// 6. Inicializa Integrações Externas
 	asaasClient := asaas.NewClient(cfg.AsaasBaseURL, cfg.AsaasAPIKey)
+	wuzapiClient := wuzapi.NewClient(cfg.WUZAPIBaseURL, cfg.WUZAPIAdminToken)
 
 	// 7. Inicializa Serviços
 	jwtService := jwt.NewJWTService(cfg.JWTSecret, cfg.JWTExpiresIn)
@@ -52,6 +54,11 @@ func main() {
 	availService := service.NewAvailabilityService(repo)
 	aptService := service.NewAppointmentService(repo, queueClient)
 	tenantService := service.NewTenantService(repo)
+	appBaseURL := "http://backend:" + cfg.Port
+	if cfg.Environment == "development" {
+		appBaseURL = "http://localhost:" + cfg.Port
+	}
+	waService := service.NewWhatsAppService(repo, wuzapiClient, cfg.EncryptionKey, appBaseURL)
 
 	// 8. Inicializa Handlers
 	authHandler := handler.NewAuthHandler(authService, repo)
@@ -66,25 +73,29 @@ func main() {
 	planHandler := handler.NewPlanHandler(planService)
 	subHandler := handler.NewSubscriptionHandler(subService)
 	webhookHandler := handler.NewWebhookHandler(cfg, queueClient, subService)
+	waHandler := handler.NewWhatsAppHandler(waService)
+	waWebhookHandler := handler.NewWhatsAppWebhookHandler(repo, queueClient)
 
 	// 9. Configura Router Gin
 	r := gin.Default()
 	handler.SetupRoutes(handler.RouterConfig{
-		Engine:               r,
-		JWTService:           jwtService,
-		Repo:                 repo,
-		AuthHandler:          authHandler,
-		PublicBookingHandler: publicBookingHandler,
-		AppointmentHandler:   appointmentHandler,
-		ServiceHandler:       serviceHandler,
-		ProfessionalHandler:  proHandler,
-		CustomerHandler:      customerHandler,
-		DashboardHandler:     dashboardHandler,
-		TenantHandler:        tenantHandler,
-		UserHandler:          userHandler,
-		PlanHandler:          planHandler,
-		SubscriptionHandler:  subHandler,
-		WebhookHandler:       webhookHandler,
+		Engine:                 r,
+		JWTService:             jwtService,
+		Repo:                   repo,
+		AuthHandler:            authHandler,
+		PublicBookingHandler:   publicBookingHandler,
+		AppointmentHandler:     appointmentHandler,
+		ServiceHandler:         serviceHandler,
+		ProfessionalHandler:    proHandler,
+		CustomerHandler:        customerHandler,
+		DashboardHandler:       dashboardHandler,
+		TenantHandler:          tenantHandler,
+		UserHandler:            userHandler,
+		PlanHandler:            planHandler,
+		SubscriptionHandler:    subHandler,
+		WebhookHandler:         webhookHandler,
+		WhatsAppHandler:        waHandler,
+		WhatsAppWebhookHandler: waWebhookHandler,
 	})
 
 	// 10. Inicia Servidor HTTP

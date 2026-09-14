@@ -66,6 +66,9 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 		&domain.Plan{},
 		&domain.Subscription{},
 		&domain.SubscriptionInvoice{},
+		&domain.TenantWhatsAppConfig{},
+		&domain.WhatsAppConversation{},
+		&domain.WhatsAppMessage{},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("falha na migração do banco: %w", err)

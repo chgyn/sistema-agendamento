@@ -17,6 +17,7 @@ const (
 	TypeSendBookingReminder     = "task:send_booking_reminder"
 	TypeAutoCancelPending       = "task:auto_cancel_pending"
 	TypeProcessAsaasWebhook     = "task:process_asaas_webhook"
+	TypeProcessWhatsAppIncoming = "task:process_whatsapp_incoming"
 )
 
 type BookingConfirmationPayload struct {
@@ -29,6 +30,16 @@ type BookingConfirmationPayload struct {
 	ProfessionalName string   `json:"professional_name"`
 	StartAt         time.Time `json:"start_at"`
 	TotalPrice      float64   `json:"total_price"`
+}
+
+type WhatsAppIncomingPayload struct {
+	TenantID      uuid.UUID `json:"tenant_id"`
+	InstanceToken string    `json:"instance_token"`
+	CustomerPhone string    `json:"customer_phone"`
+	CustomerName  string    `json:"customer_name"`
+	MessageID     string    `json:"message_id"`
+	MessageText   string    `json:"message_text"`
+	Timestamp     time.Time `json:"timestamp"`
 }
 
 type AsaasWebhookTaskPayload struct {
@@ -99,8 +110,34 @@ func (q *QueueClient) EnqueueAsaasWebhook(ctx context.Context, payload AsaasWebh
 	return nil
 }
 
+// EnqueueWhatsAppIncoming enfileira a mensagem recebida pelo webhook para processamento assíncrono com IA
+func (q *QueueClient) EnqueueWhatsAppIncoming(ctx context.Context, payload WhatsAppIncomingPayload) error {
+	if q.client == nil {
+		return nil
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	task := asynq.NewTask(TypeProcessWhatsAppIncoming, data, asynq.MaxRetry(3), asynq.Timeout(120*time.Second), asynq.Queue("default"))
+	info, err := q.client.EnqueueContext(ctx, task)
+	if err != nil {
+		log.Printf("⚠️ [Queue] Falha ao enfileirar task WhatsApp: %v", err)
+		return err
+	}
+
+	log.Printf("🚀 [Queue] Task WhatsApp enfileirada: ID=%s De=%s (%s)", info.ID, payload.CustomerName, payload.CustomerPhone)
+	return nil
+}
+
+// WhatsAppProcessor define o contrato para processamento da mensagem de WhatsApp pelo worker
+type WhatsAppProcessor interface {
+	ProcessCustomerMessage(ctx context.Context, tenantID uuid.UUID, customerPhone, customerName, incomingText, msgID string) error
+}
+
 // StartWorkerServer inicia o servidor consumidor de tarefas do Asynq
-func StartWorkerServer(cfg *config.Config) (*asynq.Server, error) {
+func StartWorkerServer(cfg *config.Config, processor WhatsAppProcessor) (*asynq.Server, error) {
 	redisAddr := fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort)
 	srv := asynq.NewServer(
 		asynq.RedisClientOpt{
@@ -122,6 +159,7 @@ func StartWorkerServer(cfg *config.Config) (*asynq.Server, error) {
 	mux.HandleFunc(TypeSendBookingReminder, HandleBookingReminderTask)
 	mux.HandleFunc(TypeAutoCancelPending, HandleAutoCancelPendingTask)
 	mux.HandleFunc(TypeProcessAsaasWebhook, HandleProcessAsaasWebhookTask)
+	mux.HandleFunc(TypeProcessWhatsAppIncoming, HandleProcessWhatsAppIncomingTask(processor))
 
 	log.Println("👷 [Worker] Asynq worker server pronto e ouvindo filas Redis...")
 	return srv, srv.Run(mux)
@@ -159,3 +197,25 @@ func HandleProcessAsaasWebhookTask(ctx context.Context, t *asynq.Task) error {
 	log.Printf("⚡ [Worker Asynq] Processando evento Webhook Asaas: %s", p.Event)
 	return nil
 }
+
+func HandleProcessWhatsAppIncomingTask(processor WhatsAppProcessor) func(context.Context, *asynq.Task) error {
+	return func(ctx context.Context, t *asynq.Task) error {
+		var p WhatsAppIncomingPayload
+		if err := json.Unmarshal(t.Payload(), &p); err != nil {
+			return fmt.Errorf("json.Unmarshal falhou no payload WhatsApp: %v: %w", err, asynq.SkipRetry)
+		}
+
+		log.Printf("📥 [Worker Asynq] Processando mensagem WhatsApp recebida de %s (%s)", p.CustomerName, p.CustomerPhone)
+		if processor != nil {
+			if err := processor.ProcessCustomerMessage(ctx, p.TenantID, p.CustomerPhone, p.CustomerName, p.MessageText, p.MessageID); err != nil {
+				log.Printf("❌ [Worker Asynq] Erro ao processar mensagem com IA: %v", err)
+				return err
+			}
+		} else {
+			log.Printf("⚠️ [Worker Asynq] WhatsAppProcessor não injetado no worker")
+		}
+
+		return nil
+	}
+}
+

@@ -169,6 +169,15 @@
             </RouterLink>
 
             <RouterLink
+              to="/admin/whatsapp"
+              class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition"
+              :class="isActive('/admin/whatsapp') ? 'bg-emerald-500 text-slate-950 font-bold shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
+            >
+              <Bot class="w-4 h-4 shrink-0" />
+              <span>WhatsApp & IA</span>
+            </RouterLink>
+
+            <RouterLink
               to="/admin/configuracoes"
               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition"
               :class="isActive('/admin/configuracoes') ? 'bg-emerald-500 text-slate-950 font-bold shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
@@ -251,7 +260,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Scissors, LayoutDashboard, Calendar, Sparkles, Users, UsersRound,
-  UserSquare2, Settings, ExternalLink, LogOut, Building2, ShieldCheck, CreditCard
+  UserSquare2, Settings, ExternalLink, LogOut, Building2, ShieldCheck, CreditCard, Bot
 } from 'lucide-vue-next'
 import { useAuthStore } from '../../stores/auth'
 

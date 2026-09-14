@@ -157,10 +157,11 @@ type Tenant struct {
 	CreatedAt           time.Time `json:"created_at"`
 	UpdatedAt           time.Time `json:"updated_at"`
 
-	Users         []User         `gorm:"foreignKey:TenantID" json:"users,omitempty"`
-	Professionals []Professional `gorm:"foreignKey:TenantID" json:"professionals,omitempty"`
-	Services      []Service      `gorm:"foreignKey:TenantID" json:"services,omitempty"`
-	Subscription  *Subscription  `gorm:"foreignKey:TenantID" json:"subscription,omitempty"`
+	Users         []User                `gorm:"foreignKey:TenantID" json:"users,omitempty"`
+	Professionals []Professional        `gorm:"foreignKey:TenantID" json:"professionals,omitempty"`
+	Services      []Service             `gorm:"foreignKey:TenantID" json:"services,omitempty"`
+	Subscription  *Subscription         `gorm:"foreignKey:TenantID" json:"subscription,omitempty"`
+	WhatsAppConfig *TenantWhatsAppConfig `gorm:"foreignKey:TenantID" json:"whatsapp_config,omitempty"`
 }
 
 // User representa os operadores, administradores de tenant ou administradores gerais
@@ -311,3 +312,83 @@ type AuditLog struct {
 	IPAddress string    `gorm:"type:varchar(50)" json:"ip_address"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+// =============================================================
+// WHATSAPP (WUZAPI) & ATENDIMENTO COM IA
+// =============================================================
+
+type WhatsAppConnectionStatus string
+
+const (
+	WhatsAppStatusDisconnected WhatsAppConnectionStatus = "DISCONNECTED"
+	WhatsAppStatusConnecting   WhatsAppConnectionStatus = "CONNECTING"
+	WhatsAppStatusQRCode       WhatsAppConnectionStatus = "QRCODE"
+	WhatsAppStatusConnected    WhatsAppConnectionStatus = "CONNECTED"
+	WhatsAppStatusLoggedOut    WhatsAppConnectionStatus = "LOGGED_OUT"
+)
+
+type AIProviderType string
+
+const (
+	AIProviderGemini AIProviderType = "GEMINI"
+	AIProviderOpenAI AIProviderType = "OPENAI"
+)
+
+// TenantWhatsAppConfig armazena a instância WUZAPI, credenciais de IA e ritmo humanizado
+type TenantWhatsAppConfig struct {
+	ID                     uuid.UUID                `gorm:"type:uuid;primaryKey" json:"id"`
+	TenantID               uuid.UUID                `gorm:"type:uuid;uniqueIndex;not null" json:"tenant_id"`
+	InstanceName           string                   `gorm:"type:varchar(100);uniqueIndex;not null" json:"instance_name"`
+	InstanceToken          string                   `gorm:"type:varchar(255);not null" json:"-"` // Token WUZAPI (nunca exposto em JSON)
+	PhoneNumber            string                   `gorm:"type:varchar(30)" json:"phone_number"`
+	Status                 WhatsAppConnectionStatus `gorm:"type:varchar(30);default:'DISCONNECTED';index;not null" json:"status"`
+	QRCodeBase64           string                   `gorm:"type:text" json:"qr_code_base64,omitempty"`
+	QRCodeExpiresAt        *time.Time               `json:"qr_code_expires_at,omitempty"`
+
+	// Configuração do Agente de IA
+	IsAIEnabled            bool                     `gorm:"column:is_ai_enabled;default:false" json:"is_ai_enabled"`
+	AIProvider             AIProviderType           `gorm:"column:ai_provider;type:varchar(20);default:'GEMINI';not null" json:"ai_provider"`
+	AIModel                string                   `gorm:"column:ai_model;type:varchar(50);default:'gemini-2.5-flash';not null" json:"ai_model"`
+	GeminiAPIKeyEncrypted   string                   `gorm:"column:gemini_api_key_encrypted;type:text" json:"-"` // Criptografado com AES-256-GCM
+	OpenAIAPIKeyEncrypted   string                   `gorm:"column:open_ai_api_key_encrypted;type:text" json:"-"` // Criptografado com AES-256-GCM
+	SystemPromptCustom     string                   `gorm:"type:text" json:"system_prompt_custom"`
+
+	// Parâmetros de Ritmo Humanizado
+	HumanizedMinDelaySec   int                      `gorm:"default:2" json:"humanized_min_delay_sec"`
+	HumanizedMaxDelaySec   int                      `gorm:"default:5" json:"humanized_max_delay_sec"`
+	TypingSpeedCharsSec    int                      `gorm:"default:35" json:"typing_speed_chars_sec"`
+	DebounceWindowSec      int                      `gorm:"default:4" json:"debounce_window_sec"`
+
+	CreatedAt              time.Time                `json:"created_at"`
+	UpdatedAt              time.Time                `json:"updated_at"`
+
+	Tenant                 *Tenant                  `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
+}
+
+// WhatsAppConversation sessão de chat e histórico com um cliente
+type WhatsAppConversation struct {
+	ID            uuid.UUID         `gorm:"type:uuid;primaryKey" json:"id"`
+	TenantID      uuid.UUID         `gorm:"type:uuid;index;not null" json:"tenant_id"`
+	CustomerPhone string            `gorm:"type:varchar(30);index;not null" json:"customer_phone"`
+	CustomerName  string            `gorm:"type:varchar(150)" json:"customer_name"`
+	CustomerID    *uuid.UUID        `gorm:"type:uuid;index" json:"customer_id,omitempty"`
+	LastMessageAt time.Time         `gorm:"index" json:"last_message_at"`
+	CreatedAt     time.Time         `json:"created_at"`
+	UpdatedAt     time.Time         `json:"updated_at"`
+
+	Messages      []WhatsAppMessage `gorm:"foreignKey:ConversationID" json:"messages,omitempty"`
+	Customer      *Customer         `gorm:"foreignKey:CustomerID" json:"customer,omitempty"`
+}
+
+// WhatsAppMessage mensagens individuais para histórico e contexto da IA
+type WhatsAppMessage struct {
+	ID             uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	ConversationID uuid.UUID `gorm:"type:uuid;index;not null" json:"conversation_id"`
+	TenantID       uuid.UUID `gorm:"type:uuid;index;not null" json:"tenant_id"`
+	Sender         string    `gorm:"type:varchar(20);not null" json:"sender"` // "customer", "assistant", "human"
+	Role           string    `gorm:"type:varchar(20);not null" json:"role"`   // "user", "assistant", "system", "tool"
+	Body           string    `gorm:"type:text;not null" json:"body"`
+	WuzapiMsgID    string    `gorm:"type:varchar(100);index" json:"wuzapi_msg_id,omitempty"`
+	CreatedAt      time.Time `gorm:"index;not null" json:"created_at"`
+}
+

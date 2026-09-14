@@ -66,6 +66,9 @@ services:
       ASAAS_API_KEY: "$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OjQ1NjY2ZDQ4LWQxM2YtNDA1YS1hMmRjLTE0MjQ5NTQwNzJhNTo6JGFhY2hfOTVkODc0YmYtOWIyYi00YWEwLWFlZjYtMjgxY2YwYmQ1OTQy"
       ASAAS_BASE_URL: "https://sandbox.asaas.com/api/v3"
       ASAAS_WEBHOOK_SECRET: "whsec_hhwwxdTmKX30aXHwqiSGB9jtv9zYbM8IAo-oCDNeSdg"
+      WUZAPI_BASE_URL: "http://wuzapi:8080"
+      WUZAPI_ADMIN_TOKEN: "wuzapi_super_admin_secret_token_2026"
+      ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     depends_on:
       postgres:
         condition: service_healthy
@@ -95,10 +98,34 @@ services:
       ASAAS_API_KEY: "$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OjQ1NjY2ZDQ4LWQxM2YtNDA1YS1hMmRjLTE0MjQ5NTQwNzJhNTo6JGFhY2hfOTVkODc0YmYtOWIyYi00YWEwLWFlZjYtMjgxY2YwYmQ1OTQy"
       ASAAS_BASE_URL: "https://sandbox.asaas.com/api/v3"
       ASAAS_WEBHOOK_SECRET: "whsec_hhwwxdTmKX30aXHwqiSGB9jtv9zYbM8IAo-oCDNeSdg"
+      WUZAPI_BASE_URL: "http://wuzapi:8080"
+      WUZAPI_ADMIN_TOKEN: "wuzapi_super_admin_secret_token_2026"
+      ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+
+  # -------------------------------------------------------------
+  # WHATSAPP REST API SERVICE (WUZAPI)
+  # -------------------------------------------------------------
+  wuzapi:
+    image: asternic/wuzapi:latest
+    container_name: agendamento_wuzapi
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      WUZAPI_ADMIN_TOKEN: "wuzapi_super_admin_secret_token_2026"
+      WUZAPI_PORT: "8080"
+      TZ: "America/Sao_Paulo"
+      WEBHOOK_FORMAT: "json"
+      SESSION_DEVICE_NAME: "SistemaAgendamento"
+    volumes:
+      - wuzapi_data:/app/db
+    depends_on:
+      postgres:
         condition: service_healthy
 
   # -------------------------------------------------------------
@@ -118,3 +145,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  wuzapi_data:

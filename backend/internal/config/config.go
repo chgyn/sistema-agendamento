@@ -27,6 +27,9 @@ type Config struct {
 	AsaasAPIKey        string
 	AsaasBaseURL       string
 	AsaasWebhookSecret string
+	WUZAPIBaseURL      string
+	WUZAPIAdminToken   string
+	EncryptionKey      string
 }
 
 func Load() *Config {
@@ -60,6 +63,10 @@ func Load() *Config {
 	asaasBaseURL := getEnv("ASAAS_BASE_URL", "https://sandbox.asaas.com/api/v3")
 	asaasWebhookSecret := getEnv("ASAAS_WEBHOOK_SECRET", "whsec_hhwwxdTmKX30aXHwqiSGB9jtv9zYbM8IAo-oCDNeSdg")
 
+	wuzapiBaseURL := getEnv("WUZAPI_BASE_URL", "http://localhost:8081")
+	wuzapiAdminToken := getEnv("WUZAPI_ADMIN_TOKEN", "wuzapi_super_admin_secret_token_2026")
+	encryptionKey := getEnv("ENCRYPTION_KEY", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+
 	return &Config{
 		Port:               port,
 		DBDriver:           dbDriver,
@@ -80,6 +87,9 @@ func Load() *Config {
 		AsaasAPIKey:        asaasAPIKey,
 		AsaasBaseURL:       asaasBaseURL,
 		AsaasWebhookSecret: asaasWebhookSecret,
+		WUZAPIBaseURL:      wuzapiBaseURL,
+		WUZAPIAdminToken:   wuzapiAdminToken,
+		EncryptionKey:      encryptionKey,
 	}
 }
 

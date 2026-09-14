@@ -21,9 +21,11 @@ type RouterConfig struct {
 	DashboardHandler     *DashboardHandler
 	TenantHandler        *TenantHandler
 	UserHandler          *UserHandler
-	PlanHandler          *PlanHandler
-	SubscriptionHandler  *SubscriptionHandler
-	WebhookHandler       *WebhookHandler
+	PlanHandler            *PlanHandler
+	SubscriptionHandler    *SubscriptionHandler
+	WebhookHandler         *WebhookHandler
+	WhatsAppHandler        *WhatsAppHandler
+	WhatsAppWebhookHandler *WhatsAppWebhookHandler
 }
 
 func SetupRoutes(cfg RouterConfig) {
@@ -47,9 +49,10 @@ func SetupRoutes(cfg RouterConfig) {
 		api.GET("/public/plans", cfg.PlanHandler.ListActivePublic)
 
 		// -------------------------------------------------------------
-		// ROTAS DE WEBHOOKS (INTEGRAÇÃO EXTERNA COM ASAAS)
+		// ROTAS DE WEBHOOKS (INTEGRAÇÕES EXTERNAS: ASAAS & WUZAPI)
 		// -------------------------------------------------------------
 		api.POST("/webhooks/asaas", cfg.WebhookHandler.HandleAsaas)
+		api.POST("/webhooks/whatsapp", cfg.WhatsAppWebhookHandler.ReceiveWebhook)
 
 		// -------------------------------------------------------------
 		// ROTAS PÚBLICAS DE AGENDAMENTO (NÃO REQUEREM LOGIN)
@@ -178,6 +181,19 @@ func SetupRoutes(cfg RouterConfig) {
 				// Configurações do Estabelecimento (Restrito a ADMIN_GLOBAL e ADMIN_TENANT)
 				tenantOps.GET("/settings", cfg.TenantHandler.GetSettings)
 				tenantOps.PUT("/settings", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.TenantHandler.UpdateSettings)
+
+				// Integração WhatsApp & Atendimento IA (WUZAPI)
+				whatsapp := tenantOps.Group("/whatsapp")
+				{
+					whatsapp.GET("/status", cfg.WhatsAppHandler.GetStatus)
+					whatsapp.POST("/instance", cfg.WhatsAppHandler.EnsureInstance)
+					whatsapp.POST("/connect", cfg.WhatsAppHandler.Connect)
+					whatsapp.GET("/qr", cfg.WhatsAppHandler.GetQRCode)
+					whatsapp.POST("/disconnect", cfg.WhatsAppHandler.Disconnect)
+					whatsapp.POST("/logout", cfg.WhatsAppHandler.Logout)
+					whatsapp.GET("/ai-config", cfg.WhatsAppHandler.GetAIConfig)
+					whatsapp.PUT("/ai-config", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.WhatsAppHandler.UpdateAIConfig)
+				}
 			}
 		}
 	}

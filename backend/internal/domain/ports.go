@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -154,3 +155,92 @@ type AsaasProvider interface {
 	CancelSubscription(ctx context.Context, asaasSubID string) error
 	GetSubscriptionPayments(ctx context.Context, asaasSubID string) ([]AsaasPaymentResponse, error)
 }
+
+// -------------------------------------------------------------
+// WHATSAPP & IA DTOs
+// -------------------------------------------------------------
+
+type WhatsAppStatusResponseDTO struct {
+	Status          WhatsAppConnectionStatus `json:"status"`
+	PhoneNumber     string                   `json:"phone_number"`
+	IsConnected     bool                     `json:"is_connected"`
+	IsLoggedIn      bool                     `json:"is_logged_in"`
+	HasQRCode       bool                     `json:"has_qr_code"`
+	QRCodeBase64    string                   `json:"qr_code_base64,omitempty"`
+	QRCodeExpiresAt *time.Time               `json:"qr_code_expires_at,omitempty"`
+	InstanceName    string                   `json:"instance_name"`
+}
+
+type QRCodeResponseDTO struct {
+	QRCodeBase64 string                   `json:"qr_code_base64"`
+	Status       WhatsAppConnectionStatus `json:"status"`
+}
+
+type AIConfigResponseDTO struct {
+	IsAIEnabled          bool           `json:"is_ai_enabled"`
+	AIProvider           AIProviderType `json:"ai_provider"`
+	AIModel              string         `json:"ai_model"`
+	HasGeminiAPIKey      bool           `json:"has_gemini_api_key"`
+	HasOpenAIAPIKey      bool           `json:"has_openai_api_key"`
+	SystemPromptCustom   string         `json:"system_prompt_custom"`
+	HumanizedMinDelaySec int            `json:"humanized_min_delay_sec"`
+	HumanizedMaxDelaySec int            `json:"humanized_max_delay_sec"`
+	TypingSpeedCharsSec  int            `json:"typing_speed_chars_sec"`
+	DebounceWindowSec    int            `json:"debounce_window_sec"`
+}
+
+type UpdateAIConfigDTO struct {
+	IsAIEnabled          bool           `json:"is_ai_enabled"`
+	AIProvider           AIProviderType `json:"ai_provider" binding:"required,oneof=GEMINI OPENAI"`
+	AIModel              string         `json:"ai_model" binding:"required"`
+	GeminiAPIKey         *string        `json:"gemini_api_key,omitempty"`
+	OpenAIAPIKey         *string        `json:"openai_api_key,omitempty"`
+	SystemPromptCustom   string         `json:"system_prompt_custom"`
+	HumanizedMinDelaySec int            `json:"humanized_min_delay_sec" binding:"min=1,max=10"`
+	HumanizedMaxDelaySec int            `json:"humanized_max_delay_sec" binding:"min=1,max=15"`
+	TypingSpeedCharsSec  int            `json:"typing_speed_chars_sec" binding:"min=10,max=100"`
+	DebounceWindowSec    int            `json:"debounce_window_sec" binding:"min=1,max=10"`
+}
+
+// Wuzapi Webhook Payload
+type WuzapiWebhookPayload struct {
+	Type  string             `json:"type"`  // "Message", "ReadReceipt", "ChatPresence"
+	Token string             `json:"token"` // Token da instância
+	Event WuzapiMessageEvent `json:"event"`
+}
+
+type WuzapiMessageEvent struct {
+	Info struct {
+		ID        string `json:"Id"`
+		PushName  string `json:"PushName"`
+		Timestamp string `json:"Timestamp"`
+		Source    struct {
+			Sender   string `json:"Sender"`
+			Chat     string `json:"Chat"`
+			IsFromMe bool   `json:"IsFromMe"`
+			IsGroup  bool   `json:"IsGroup"`
+		} `json:"Source"`
+	} `json:"Info"`
+	Message struct {
+		Conversation        string `json:"conversation"`
+		ExtendedTextMessage struct {
+			Text string `json:"text"`
+		} `json:"extendedTextMessage"`
+	} `json:"Message"`
+}
+
+// -------------------------------------------------------------
+// WHATSAPP REPOSITORY INTERFACE (PORT)
+// -------------------------------------------------------------
+
+type WhatsAppRepository interface {
+	GetWhatsAppConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (*TenantWhatsAppConfig, error)
+	GetWhatsAppConfigByInstanceToken(ctx context.Context, token string) (*TenantWhatsAppConfig, error)
+	UpsertWhatsAppConfig(ctx context.Context, config *TenantWhatsAppConfig) error
+	UpdateWhatsAppStatus(ctx context.Context, tenantID uuid.UUID, status WhatsAppConnectionStatus, phone string) error
+	UpdateQRCode(ctx context.Context, tenantID uuid.UUID, qrCode string, expiresAt *time.Time) error
+	GetOrCreateConversation(ctx context.Context, tenantID uuid.UUID, customerPhone, customerName string) (*WhatsAppConversation, error)
+	SaveWhatsAppMessage(ctx context.Context, msg *WhatsAppMessage) error
+	GetRecentMessages(ctx context.Context, conversationID uuid.UUID, limit int) ([]WhatsAppMessage, error)
+}
+
