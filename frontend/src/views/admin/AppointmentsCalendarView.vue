@@ -3,39 +3,39 @@
     <!-- Header & Filtros -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-black text-white tracking-tight">Agenda de Atendimentos</h1>
-        <p class="text-xs sm:text-sm text-slate-400 mt-1">
-          Gerencie e acompanhe todos os agendamentos da sua barbearia/salão
+        <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight font-display">Agenda de Atendimentos</h1>
+        <p class="text-xs sm:text-sm text-zinc-400 mt-1">
+          Gerencie e acompanhe todos os agendamentos da sua barbearia/salão em tempo real
         </p>
       </div>
 
       <button
         @click="openNewModal"
-        class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition shadow-md self-start sm:self-auto"
+        class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-zinc-950 text-xs font-bold transition shadow-glow-sm self-start sm:self-auto cursor-pointer"
       >
         <Plus class="w-4 h-4" />
         <span>Novo Agendamento</span>
       </button>
     </div>
 
-    <!-- Barra de Filtros -->
-    <div class="glass-panel p-4 rounded-2xl border border-slate-800 grid grid-cols-1 sm:grid-cols-4 gap-3">
+    <!-- Barra de Filtros EstiloMarca -->
+    <div class="glass-panel p-4 rounded-2xl border border-zinc-800 grid grid-cols-1 sm:grid-cols-4 gap-3.5">
       <div>
-        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Data:</label>
+        <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">Data:</label>
         <input
           v-model="filters.date"
           @change="loadAppointments"
           type="date"
-          class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          class="w-full px-3 py-2 rounded-xl bg-[#14151c] border border-zinc-750 text-white text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500 transition"
         />
       </div>
 
       <div>
-        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Profissional:</label>
+        <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">Profissional:</label>
         <select
           v-model="filters.professional_id"
           @change="loadAppointments"
-          class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          class="w-full px-3 py-2 rounded-xl bg-[#14151c] border border-zinc-750 text-white text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500 transition"
         >
           <option value="">Todos os Profissionais</option>
           <option v-for="pro in professionals" :key="pro.id" :value="pro.id">{{ pro.name }}</option>
@@ -43,11 +43,11 @@
       </div>
 
       <div>
-        <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Status:</label>
+        <label class="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">Status:</label>
         <select
           v-model="filters.status"
           @change="loadAppointments"
-          class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          class="w-full px-3 py-2 rounded-xl bg-[#14151c] border border-zinc-750 text-white text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500 transition"
         >
           <option value="">Todos os Status</option>
           <option value="CONFIRMED">Confirmado</option>
@@ -59,7 +59,7 @@
       <div class="flex items-end">
         <button
           @click="resetFilters"
-          class="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
+          class="w-full py-2 px-3 rounded-xl bg-[#181922] hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700/60 text-xs font-bold transition cursor-pointer"
         >
           Limpar Filtros
         </button>
@@ -67,48 +67,48 @@
     </div>
 
     <!-- Lista de Agendamentos -->
-    <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
+    <div class="glass-panel rounded-2xl border border-zinc-800 overflow-hidden">
       <div v-if="isLoading" class="text-center py-16">
-        <Loader2 class="w-8 h-8 animate-spin text-emerald-500 mx-auto mb-2" />
-        <p class="text-xs text-slate-400">Carregando agendamentos...</p>
+        <Loader2 class="w-8 h-8 animate-spin text-orange-500 mx-auto mb-2" />
+        <p class="text-xs text-zinc-400">Carregando agendamentos...</p>
       </div>
 
       <div v-else-if="appointments.length === 0" class="text-center py-16 px-4">
-        <CalendarX class="w-10 h-10 text-slate-600 mx-auto mb-2" />
-        <p class="text-sm font-semibold text-slate-300">Nenhum agendamento encontrado para este filtro</p>
-        <p class="text-xs text-slate-500 mt-1">Crie um agendamento manual ou altere a data selecionada.</p>
+        <CalendarX class="w-10 h-10 text-zinc-600 mx-auto mb-2" />
+        <p class="text-sm font-bold text-zinc-300">Nenhum agendamento encontrado para este filtro</p>
+        <p class="text-xs text-zinc-500 mt-1">Crie um agendamento manual ou selecione outra data acima.</p>
       </div>
 
-      <div v-else class="divide-y divide-slate-800/80">
+      <div v-else class="divide-y divide-zinc-800/80">
         <div
           v-for="apt in appointments"
           :key="apt.id"
-          class="p-4 sm:px-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-900/50 transition"
+          class="p-4 sm:px-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#16171e]/80 transition"
         >
           <div class="flex items-start sm:items-center space-x-4">
             <!-- Bloco de Horário -->
-            <div class="w-16 text-center py-2 px-2.5 rounded-xl bg-slate-900 border border-slate-800 shrink-0">
-              <span class="text-xs font-black text-emerald-400 block">{{ formatTime(apt.start_at) }}</span>
-              <span class="text-[10px] text-slate-400 block">{{ formatDateShort(apt.start_at) }}</span>
+            <div class="w-16 text-center py-2 px-2.5 rounded-xl bg-[#14151c] border border-zinc-750 shrink-0">
+              <span class="text-xs font-black text-orange-400 block font-display">{{ formatTime(apt.start_at) }}</span>
+              <span class="text-[10px] text-zinc-400 block">{{ formatDateShort(apt.start_at) }}</span>
             </div>
 
             <!-- Dados do Atendimento -->
             <div>
               <div class="flex items-center gap-2">
-                <h3 class="font-bold text-sm text-white">{{ apt.customer?.name || 'Cliente' }}</h3>
-                <span class="text-xs text-slate-400">({{ apt.customer?.phone }})</span>
+                <h3 class="font-bold text-sm text-white font-display">{{ apt.customer?.name || 'Cliente' }}</h3>
+                <span class="text-xs text-zinc-400">({{ apt.customer?.phone }})</span>
               </div>
-              <p class="text-xs text-slate-400 mt-0.5 flex flex-wrap items-center gap-2">
-                <span class="text-white font-medium">{{ apt.service?.name }}</span>
+              <p class="text-xs text-zinc-400 mt-0.5 flex flex-wrap items-center gap-2">
+                <span class="text-zinc-200 font-semibold">{{ apt.service?.name }}</span>
                 <span>•</span>
                 <span>Duração: {{ apt.duration_minutes }} min</span>
                 <span>•</span>
-                <span>Profissional: <strong class="text-emerald-400">{{ apt.professional?.name }}</strong></span>
+                <span>Profissional: <strong class="text-orange-400">{{ apt.professional?.name }}</strong></span>
               </p>
-              <p v-if="apt.notes" class="text-[11px] text-amber-400/90 mt-1">
+              <p v-if="apt.notes" class="text-[11px] text-amber-400/90 mt-1 italic">
                 Obs: {{ apt.notes }}
               </p>
-              <p v-if="apt.cancellation_reason" class="text-[11px] text-red-400/90 mt-1">
+              <p v-if="apt.cancellation_reason" class="text-[11px] text-rose-400/90 mt-1 italic">
                 Motivo cancelamento: {{ apt.cancellation_reason }}
               </p>
             </div>
@@ -116,8 +116,8 @@
 
           <!-- Preço, Status e Ações -->
           <div class="flex items-center gap-3 sm:self-center self-end">
-            <span class="text-sm font-extrabold text-white">
-              R$ {{ apt.total_price?.toFixed(2) }}
+            <span class="text-sm font-black text-white font-display">
+              R$ {{ apt.total_price?.toFixed(2).replace('.', ',') }}
             </span>
 
             <span :class="getStatusBadgeClass(apt.status)">
@@ -129,7 +129,7 @@
               <button
                 v-if="apt.status === 'CONFIRMED'"
                 @click="completeAppointment(apt.id)"
-                class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 text-xs font-bold transition"
+                class="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-zinc-950 text-xs font-bold transition cursor-pointer"
                 title="Concluir Atendimento"
               >
                 Concluir ✓
@@ -138,7 +138,7 @@
               <button
                 v-if="apt.status === 'CONFIRMED'"
                 @click="openRescheduleModal(apt)"
-                class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-semibold transition"
+                class="px-2.5 py-1.5 rounded-xl bg-[#181922] text-zinc-300 hover:bg-zinc-800 hover:text-white border border-zinc-700/60 text-xs font-semibold transition cursor-pointer"
                 title="Reagendar"
               >
                 Reagendar
@@ -147,7 +147,7 @@
               <button
                 v-if="apt.status === 'CONFIRMED'"
                 @click="cancelAppointment(apt.id)"
-                class="px-2.5 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white text-xs font-bold transition"
+                class="px-2.5 py-1.5 rounded-xl bg-rose-500/15 text-rose-400 hover:bg-rose-500 hover:text-white text-xs font-bold transition cursor-pointer"
                 title="Cancelar"
               >
                 Cancelar
@@ -159,37 +159,37 @@
     </div>
 
     <!-- MODAL: Novo Agendamento Administrativo -->
-    <div v-if="showNewModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div class="glass-panel w-full max-w-lg rounded-2xl border border-slate-800 p-6 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h3 class="font-bold text-lg text-white">Novo Agendamento Manual</h3>
-          <button @click="showNewModal = false" class="text-slate-400 hover:text-white text-lg">✕</button>
+    <div v-if="showNewModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div class="glass-panel w-full max-w-lg rounded-2xl border border-zinc-800 p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <h3 class="font-bold text-lg text-white font-display">Novo Agendamento Manual</h3>
+          <button @click="showNewModal = false" class="text-zinc-400 hover:text-white text-lg font-bold">✕</button>
         </div>
 
-        <form class="space-y-3" @submit.prevent="submitNewAppointment">
-          <div v-if="modalError" class="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+        <form class="space-y-3.5" @submit.prevent="submitNewAppointment">
+          <div v-if="modalError" class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
             {{ modalError }}
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Serviço *</label>
+              <label class="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">Serviço *</label>
               <select
                 v-model="newAptForm.service_id"
                 required
-                class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500"
+                class="w-full px-3 py-2.5 rounded-xl bg-[#14151c] border border-zinc-750 text-white text-xs focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500"
               >
                 <option value="" disabled>Selecione</option>
-                <option v-for="s in services" :key="s.id" :value="s.id">{{ s.name }} (R$ {{ s.price.toFixed(2) }})</option>
+                <option v-for="s in services" :key="s.id" :value="s.id">{{ s.name }} (R$ {{ s.price.toFixed(2).replace('.', ',') }})</option>
               </select>
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Profissional *</label>
+              <label class="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">Profissional *</label>
               <select
                 v-model="newAptForm.professional_id"
                 required
-                class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500"
+                class="w-full px-3 py-2.5 rounded-xl bg-[#14151c] border border-zinc-750 text-white text-xs focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500"
               >
                 <option value="" disabled>Selecione</option>
                 <option v-for="p in professionals" :key="p.id" :value="p.id">{{ p.name }}</option>
@@ -199,70 +199,70 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Data *</label>
+              <label class="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">Data *</label>
               <input
                 v-model="newAptForm.date"
                 type="date"
                 required
-                class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500"
+                class="w-full px-3 py-2.5 rounded-xl bg-[#14151c] border border-zinc-750 text-white text-xs focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500"
               />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Horário (HH:MM) *</label>
+              <label class="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">Horário (HH:MM) *</label>
               <input
                 v-model="newAptForm.time"
                 type="time"
                 required
-                class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500"
+                class="w-full px-3 py-2.5 rounded-xl bg-[#14151c] border border-zinc-750 text-white text-xs focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500"
               />
             </div>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Cliente *</label>
+              <label class="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">Nome do Cliente *</label>
               <input
                 v-model="newAptForm.customer_name"
                 type="text"
                 required
                 placeholder="Ex: Carlos Silva"
-                class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500"
+                class="w-full px-3 py-2.5 rounded-xl bg-[#14151c] border border-zinc-750 text-white placeholder-zinc-500 text-xs focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500"
               />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">WhatsApp / Telefone *</label>
+              <label class="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">WhatsApp / Telefone *</label>
               <input
                 v-model="newAptForm.customer_phone"
                 type="text"
                 required
                 placeholder="(11) 99999-8888"
-                class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500"
+                class="w-full px-3 py-2.5 rounded-xl bg-[#14151c] border border-zinc-750 text-white placeholder-zinc-500 text-xs focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500"
               />
             </div>
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Observações</label>
+            <label class="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">Observações</label>
             <input
               v-model="newAptForm.notes"
               type="text"
               placeholder="Opcional"
-              class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500"
+              class="w-full px-3 py-2.5 rounded-xl bg-[#14151c] border border-zinc-750 text-white placeholder-zinc-500 text-xs focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500"
             />
           </div>
 
-          <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <div class="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800">
             <button
               type="button"
               @click="showNewModal = false"
-              class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
+              class="px-4 py-2.5 rounded-xl bg-[#181922] hover:bg-zinc-800 text-zinc-300 text-xs font-bold transition border border-zinc-700/60"
             >
               Cancelar
             </button>
             <button
               type="submit"
               :disabled="isSubmittingModal"
-              class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition disabled:opacity-50"
+              class="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-zinc-950 text-xs font-bold transition shadow-glow-sm disabled:opacity-50 cursor-pointer"
             >
               {{ isSubmittingModal ? 'Salvando...' : 'Confirmar Agendamento' }}
             </button>
@@ -272,49 +272,49 @@
     </div>
 
     <!-- MODAL: Reagendamento -->
-    <div v-if="showRescheduleModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div class="glass-panel w-full max-w-md rounded-2xl border border-slate-800 p-6 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h3 class="font-bold text-lg text-white">Reagendar Atendimento</h3>
-          <button @click="showRescheduleModal = false" class="text-slate-400 hover:text-white text-lg">✕</button>
+    <div v-if="showRescheduleModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div class="glass-panel w-full max-w-md rounded-2xl border border-zinc-800 p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <h3 class="font-bold text-lg text-white font-display">Reagendar Atendimento</h3>
+          <button @click="showRescheduleModal = false" class="text-zinc-400 hover:text-white text-lg font-bold">✕</button>
         </div>
 
-        <form class="space-y-3" @submit.prevent="submitReschedule">
-          <div v-if="modalError" class="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+        <form class="space-y-3.5" @submit.prevent="submitReschedule">
+          <div v-if="modalError" class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
             {{ modalError }}
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Nova Data *</label>
+            <label class="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">Nova Data *</label>
             <input
               v-model="rescheduleForm.date"
               type="date"
               required
-              class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500"
+              class="w-full px-3 py-2.5 rounded-xl bg-[#14151c] border border-zinc-750 text-white text-xs focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500"
             />
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Novo Horário (HH:MM) *</label>
+            <label class="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">Novo Horário (HH:MM) *</label>
             <input
               v-model="rescheduleForm.time"
               type="time"
               required
-              class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500"
+              class="w-full px-3 py-2.5 rounded-xl bg-[#14151c] border border-zinc-750 text-white text-xs focus:ring-2 focus:ring-orange-500/25 focus:border-orange-500"
             />
           </div>
 
-          <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <div class="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800">
             <button
               type="button"
               @click="showRescheduleModal = false"
-              class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
+              class="px-4 py-2.5 rounded-xl bg-[#181922] hover:bg-zinc-800 text-zinc-300 text-xs font-bold transition border border-zinc-700/60"
             >
               Fechar
             </button>
             <button
               type="submit"
-              class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition"
+              class="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-zinc-950 text-xs font-bold transition shadow-glow-sm cursor-pointer"
             >
               Salvar Reagendamento
             </button>
@@ -516,13 +516,13 @@ function formatStatus(status: string) {
 function getStatusBadgeClass(status: string) {
   switch (status) {
     case 'CONFIRMED':
-      return 'px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+      return 'px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
     case 'COMPLETED':
-      return 'px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20'
+      return 'px-2.5 py-1 rounded-full text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30'
     case 'CANCELLED':
-      return 'px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20'
+      return 'px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30'
     default:
-      return 'px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20'
+      return 'px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30'
   }
 }
 </script>

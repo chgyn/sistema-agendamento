@@ -4,39 +4,63 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100;
+    @apply bg-[#0d0e12] text-zinc-100 font-sans antialiased selection:bg-orange-500 selection:text-zinc-950 min-h-screen;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.025em;
   }
 }
 
-/* Scrollbar estilizada */
+/* Scrollbar estilizada moderna */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(13, 14, 18, 0.8);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
+  background: rgba(43, 45, 61, 0.85);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 185, 129, 0.7);
+  background: rgba(249, 115, 22, 0.8);
 }
 
-/* Efeito Glassmorphism */
+/* Efeito Glassmorphism & Cards no Estilo Obsidian */
 .glass-panel {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 19, 24, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .glass-card {
-  background: rgba(30, 41, 59, 0.6);
-  backdrop-filter: blur(8px);
+  background: rgba(24, 25, 33, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-card-elevated {
+  background: rgba(30, 32, 42, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+/* Efeito Glow para Cards Ativos */
+.card-active-glow {
+  box-shadow: 0 0 20px -3px rgba(249, 115, 22, 0.3);
+  border-color: rgba(249, 115, 22, 0.6) !important;
+}
+
+/* Transições suaves de interação */
+.transition-card {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
