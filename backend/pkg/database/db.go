@@ -15,11 +15,15 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-func Connect(cfg *config.Config) (*gorm.DB, error) {
+func openDB(cfg *config.Config) (*gorm.DB, error) {
 	var dialector gorm.Dialector
 
 	if cfg.DBDriver == "sqlite" {
-		dialector = sqlite.Open("agendamento.db")
+		sqlitePath := "agendamento.db"
+		if cfg.DBURL != "" {
+			sqlitePath = cfg.DBURL
+		}
+		dialector = sqlite.Open(sqlitePath)
 	} else {
 		var dsn string
 		if cfg.DBURL != "" {
@@ -50,8 +54,35 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 		}
 	}
 
-	// Auto Migration de todas as tabelas
-	err = db.AutoMigrate(
+	return db, nil
+}
+
+func Connect(cfg *config.Config) (*gorm.DB, error) {
+	db, err := openDB(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := autoMigrate(db); err != nil {
+		return nil, err
+	}
+
+	log.Println("✅ Banco de dados conectado e tabelas migradas com sucesso.")
+	return db, nil
+}
+
+// ConnectWorker abre o banco sem AutoMigrate para evitar corrida com a API na subida.
+func ConnectWorker(cfg *config.Config) (*gorm.DB, error) {
+	db, err := openDB(cfg)
+	if err != nil {
+		return nil, err
+	}
+	log.Println("✅ Banco de dados conectado no Worker (sem migração concorrente).")
+	return db, nil
+}
+
+func autoMigrate(db *gorm.DB) error {
+	err := db.AutoMigrate(
 		&domain.Tenant{},
 		&domain.User{},
 		&domain.Professional{},
@@ -71,111 +102,154 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 		&domain.WhatsAppMessage{},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("falha na migração do banco: %w", err)
+		return fmt.Errorf("falha na migração do banco: %w", err)
 	}
-
-	log.Println("✅ Banco de dados conectado e tabelas migradas com sucesso.")
-	return db, nil
+	return nil
 }
 
-// SeedInitialData popula dados de teste ricos para demonstração imediata
-func SeedInitialData(db *gorm.DB) error {
-	// Senha padrão demo: admin123
-	passHash, _ := hash.HashPassword("admin123")
-
-	// 0. Garante existência do Administrador Geral da Plataforma
-	var globalAdminCount int64
-	db.Model(&domain.User{}).Where("email = ?", "admin@plataforma.com").Count(&globalAdminCount)
-	if globalAdminCount == 0 {
-		globalAdmin := domain.User{
-			ID:           uuid.New(),
-			TenantID:     nil,
-			Name:         "Administrador Geral da Plataforma",
-			Email:        "admin@plataforma.com",
-			PasswordHash: passHash,
-			Role:         domain.RoleAdminGlobal,
-			IsActive:     true,
-			CreatedAt:    time.Now(),
-			UpdatedAt:    time.Now(),
-		}
-		if err := db.Create(&globalAdmin).Error; err != nil {
-			log.Printf("Aviso ao criar admin global: %v", err)
-		} else {
-			log.Println("👑 Administrador Geral inicial criado: admin@plataforma.com")
-		}
+// ApplySeed aplica seed mínimo de produção ou dados de demonstração, conforme a configuração.
+func ApplySeed(db *gorm.DB, cfg *config.Config) error {
+	if err := seedDefaultPlans(db); err != nil {
+		return fmt.Errorf("falha ao semear planos padrão: %w", err)
 	}
+	if cfg.SeedDemo {
+		return SeedInitialData(db)
+	}
+	if err := seedBootstrapAdmin(db, cfg.InitialAdminEmail, cfg.InitialAdminPassword); err != nil {
+		return fmt.Errorf("falha ao semear administrador inicial: %w", err)
+	}
+	return nil
+}
 
-	// 0.1 Garante existência de Planos Comerciais Padrão
+func seedDefaultPlans(db *gorm.DB) error {
 	var planCount int64
-	db.Model(&domain.Plan{}).Count(&planCount)
-	var defaultPlanID uuid.UUID
-	if planCount == 0 {
-		planBasicoID := uuid.New()
-		defaultPlanID = planBasicoID
-		planProID := uuid.New()
-		planPremiumID := uuid.New()
-
-		plans := []domain.Plan{
-			{
-				ID:               planBasicoID,
-				Name:             "Plano Starter",
-				Description:      "Ideal para profissionais autônomos e barbearias individuais que buscam praticidade.",
-				Price:            49.90,
-				BillingCycle:     domain.CycleMonthly,
-				MaxProfessionals: 1,
-				MaxServices:      10,
-				Features:         `["1 Profissional", "Até 10 Serviços", "Agendamento Online 24/7", "Lembretes no WhatsApp", "Painel Básico"]`,
-				IsActive:         true,
-				SortOrder:        1,
-				CreatedAt:        time.Now(),
-				UpdatedAt:        time.Now(),
-			},
-			{
-				ID:               planProID,
-				Name:             "Plano Profissional",
-				Description:      "O plano mais popular para estabelecimentos em crescimento com equipe.",
-				Price:            99.90,
-				BillingCycle:     domain.CycleMonthly,
-				MaxProfessionals: 5,
-				MaxServices:      30,
-				Features:         `["Até 5 Profissionais", "Até 30 Serviços", "Agendamento Online 24/7", "Lembretes Automáticos", "Relatórios Financeiros", "Suporte Prioritário"]`,
-				IsActive:         true,
-				SortOrder:        2,
-				CreatedAt:        time.Now(),
-				UpdatedAt:        time.Now(),
-			},
-			{
-				ID:               planPremiumID,
-				Name:             "Plano Scale / VIP",
-				Description:      "Para salões de grande porte e redes com múltiplos profissionais e alta demanda.",
-				Price:            189.90,
-				BillingCycle:     domain.CycleMonthly,
-				MaxProfessionals: 0, // Ilimitado
-				MaxServices:      0, // Ilimitado
-				Features:         `["Profissionais Ilimitados", "Serviços Ilimitados", "Personalização Completa", "Taxa Zero por Agendamento", "API & Webhooks", "Gerente de Conta"]`,
-				IsActive:         true,
-				SortOrder:        3,
-				CreatedAt:        time.Now(),
-				UpdatedAt:        time.Now(),
-			},
-		}
-
-		for _, p := range plans {
-			if err := db.Create(&p).Error; err != nil {
-				log.Printf("Aviso ao criar plano padrão: %v", err)
-			}
-		}
-		log.Println("💎 Planos de assinatura padrão cadastrados com sucesso!")
-	} else {
-		var firstPlan domain.Plan
-		db.First(&firstPlan)
-		defaultPlanID = firstPlan.ID
+	if err := db.Model(&domain.Plan{}).Count(&planCount).Error; err != nil {
+		return fmt.Errorf("falha ao contar planos: %w", err)
 	}
+	if planCount > 0 {
+		return nil
+	}
+
+	planBasicoID := uuid.New()
+	planProID := uuid.New()
+	planPremiumID := uuid.New()
+	plans := []domain.Plan{
+		{
+			ID:               planBasicoID,
+			Name:             "Plano Starter",
+			Description:      "Ideal para profissionais autônomos e barbearias individuais que buscam praticidade.",
+			Price:            49.90,
+			BillingCycle:     domain.CycleMonthly,
+			MaxProfessionals: 1,
+			MaxServices:      10,
+			Features:         `["1 Profissional", "Até 10 Serviços", "Agendamento Online 24/7", "Lembretes no WhatsApp", "Painel Básico"]`,
+			IsActive:         true,
+			SortOrder:        1,
+			CreatedAt:        time.Now(),
+			UpdatedAt:        time.Now(),
+		},
+		{
+			ID:               planProID,
+			Name:             "Plano Profissional",
+			Description:      "O plano mais popular para estabelecimentos em crescimento com equipe.",
+			Price:            99.90,
+			BillingCycle:     domain.CycleMonthly,
+			MaxProfessionals: 5,
+			MaxServices:      30,
+			Features:         `["Até 5 Profissionais", "Até 30 Serviços", "Agendamento Online 24/7", "Lembretes Automáticos", "Relatórios Financeiros", "Suporte Prioritário"]`,
+			IsActive:         true,
+			SortOrder:        2,
+			CreatedAt:        time.Now(),
+			UpdatedAt:        time.Now(),
+		},
+		{
+			ID:               planPremiumID,
+			Name:             "Plano Scale / VIP",
+			Description:      "Para salões de grande porte e redes com múltiplos profissionais e alta demanda.",
+			Price:            189.90,
+			BillingCycle:     domain.CycleMonthly,
+			MaxProfessionals: 0,
+			MaxServices:      0,
+			Features:         `["Profissionais Ilimitados", "Serviços Ilimitados", "Personalização Completa", "Taxa Zero por Agendamento", "API & Webhooks", "Gerente de Conta"]`,
+			IsActive:         true,
+			SortOrder:        3,
+			CreatedAt:        time.Now(),
+			UpdatedAt:        time.Now(),
+		},
+	}
+
+	for _, p := range plans {
+		if err := db.Create(&p).Error; err != nil {
+			return fmt.Errorf("falha ao criar plano %s: %w", p.Name, err)
+		}
+	}
+	log.Println("💎 Planos de assinatura padrão cadastrados com sucesso!")
+	return nil
+}
+
+func seedBootstrapAdmin(db *gorm.DB, email, password string) error {
+	var globalAdminCount int64
+	if err := db.Model(&domain.User{}).Where("role = ?", domain.RoleAdminGlobal).Count(&globalAdminCount).Error; err != nil {
+		return fmt.Errorf("falha ao contar administradores globais: %w", err)
+	}
+	if globalAdminCount > 0 {
+		return nil
+	}
+	if email == "" || password == "" {
+		return fmt.Errorf("INITIAL_ADMIN_EMAIL e INITIAL_ADMIN_PASSWORD são obrigatórios para criar o primeiro administrador")
+	}
+
+	passHash, err := hash.HashPassword(password)
+	if err != nil {
+		return fmt.Errorf("falha ao gerar hash da senha inicial: %w", err)
+	}
+
+	admin := domain.User{
+		ID:           uuid.New(),
+		TenantID:     nil,
+		Name:         "Administrador Geral da Plataforma",
+		Email:        email,
+		PasswordHash: passHash,
+		Role:         domain.RoleAdminGlobal,
+		IsActive:     true,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+	if err := db.Create(&admin).Error; err != nil {
+		return fmt.Errorf("falha ao criar administrador inicial: %w", err)
+	}
+	log.Printf("👑 Administrador Geral inicial criado: %s", email)
+	return nil
+}
+
+// SeedInitialData popula dados de teste ricos para demonstração imediata.
+// Não deve ser chamado em produção a menos que SEED_DEMO=true.
+func SeedInitialData(db *gorm.DB) error {
+	if err := seedDefaultPlans(db); err != nil {
+		return err
+	}
+
+	passHash, err := hash.HashPassword("admin123")
+	if err != nil {
+		return fmt.Errorf("falha ao gerar hash da senha demo: %w", err)
+	}
+
+	if err := seedBootstrapAdmin(db, "admin@plataforma.com", "admin123"); err != nil {
+		log.Printf("Aviso ao criar admin global demo: %v", err)
+	}
+
+	var firstPlan domain.Plan
+	if err := db.First(&firstPlan).Error; err != nil {
+		return fmt.Errorf("falha ao obter plano padrão para seed demo: %w", err)
+	}
+	defaultPlanID := firstPlan.ID
 
 	var count int64
-	db.Model(&domain.Tenant{}).Count(&count)
+	if err := db.Model(&domain.Tenant{}).Count(&count).Error; err != nil {
+		return fmt.Errorf("falha ao contar tenants: %w", err)
+	}
 	if count > 0 {
-		return nil // Já existem tenants
+		return nil
 	}
 
 	log.Println("🌱 Populando banco com dados de demonstração multi-tenant...")

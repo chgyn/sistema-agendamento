@@ -1,45 +1,53 @@
+name: sistema-agendamento
+
+networks:
+  agendamento:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  wuzapi_data:
+  caddy_data:
+  caddy_config:
+
 services:
-  # -------------------------------------------------------------
-  # BANCO DE DADOS: PostgreSQL 16
-  # -------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: agendamento_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
-      POSTGRES_DB: sistema_agendamento
-    ports:
-      - "5433:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-sistema_agendamento}
+      TZ: ${TZ:-America/Sao_Paulo}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d sistema_agendamento"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-sistema_agendamento}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+    networks:
+      - agendamento
 
-  # -------------------------------------------------------------
-  # FILAS E PROCESSAMENTO ASSÍNCRONO: Redis 7
-  # -------------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: agendamento_redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    networks:
+      - agendamento
 
-  # -------------------------------------------------------------
-  # API REST BACKEND (Go + Gin)
-  # -------------------------------------------------------------
   backend:
     build:
       context: ./backend
@@ -47,37 +55,49 @@ services:
     container_name: agendamento_api
     restart: unless-stopped
     command: ["/app/api-bin"]
-    ports:
-      - "8080:8080"
+    env_file:
+      - path: .env
+        required: false
     environment:
-      PORT: "8080"
-      APP_ENV: "production"
-      DB_DRIVER: "postgres"
-      DB_HOST: "postgres"
+      PORT: ${PORT:-8080}
+      APP_ENV: ${APP_ENV:-production}
+      DB_DRIVER: postgres
+      DB_HOST: postgres
       DB_PORT: "5432"
-      DB_USER: "postgres"
-      DB_PASSWORD: "postgrespassword"
-      DB_NAME: "sistema_agendamento"
-      DB_SSLMODE: "disable"
-      REDIS_HOST: "redis"
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB:-sistema_agendamento}
+      DB_SSLMODE: disable
+      REDIS_HOST: redis
       REDIS_PORT: "6379"
-      JWT_SECRET: "super-secret-scheduling-jwt-key-2026-secure-token"
-      JWT_EXPIRES_IN_HOURS: "72"
-      ASAAS_API_KEY: "$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OjQ1NjY2ZDQ4LWQxM2YtNDA1YS1hMmRjLTE0MjQ5NTQwNzJhNTo6JGFhY2hfOTVkODc0YmYtOWIyYi00YWEwLWFlZjYtMjgxY2YwYmQ1OTQy"
-      ASAAS_BASE_URL: "https://sandbox.asaas.com/api/v3"
-      ASAAS_WEBHOOK_SECRET: "whsec_hhwwxdTmKX30aXHwqiSGB9jtv9zYbM8IAo-oCDNeSdg"
-      WUZAPI_BASE_URL: "http://wuzapi:8080"
-      WUZAPI_ADMIN_TOKEN: "wuzapi_super_admin_secret_token_2026"
-      ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN_HOURS: ${JWT_EXPIRES_IN_HOURS:-72}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      ASAAS_API_KEY: ${ASAAS_API_KEY:-}
+      ASAAS_BASE_URL: ${ASAAS_BASE_URL:-https://sandbox.asaas.com/api/v3}
+      ASAAS_WEBHOOK_SECRET: ${ASAAS_WEBHOOK_SECRET:-}
+      WUZAPI_BASE_URL: http://wuzapi:8080
+      WUZAPI_ADMIN_TOKEN: ${WUZAPI_ADMIN_TOKEN}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      TZ: ${TZ:-America/Sao_Paulo}
+      SEED_DEMO: ${SEED_DEMO:-false}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@plataforma.com}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - agendamento
 
-  # -------------------------------------------------------------
-  # WORKER ASYNQ (Go + Asynq + Redis)
-  # -------------------------------------------------------------
   worker:
     build:
       context: ./backend
@@ -85,64 +105,94 @@ services:
     container_name: agendamento_worker
     restart: unless-stopped
     command: ["/app/worker-bin"]
+    env_file:
+      - path: .env
+        required: false
     environment:
-      APP_ENV: "production"
-      DB_DRIVER: "postgres"
-      DB_HOST: "postgres"
+      APP_ENV: ${APP_ENV:-production}
+      DB_DRIVER: postgres
+      DB_HOST: postgres
       DB_PORT: "5432"
-      DB_USER: "postgres"
-      DB_PASSWORD: "postgrespassword"
-      DB_NAME: "sistema_agendamento"
-      REDIS_HOST: "redis"
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB:-sistema_agendamento}
+      DB_SSLMODE: disable
+      REDIS_HOST: redis
       REDIS_PORT: "6379"
-      ASAAS_API_KEY: "$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OjQ1NjY2ZDQ4LWQxM2YtNDA1YS1hMmRjLTE0MjQ5NTQwNzJhNTo6JGFhY2hfOTVkODc0YmYtOWIyYi00YWEwLWFlZjYtMjgxY2YwYmQ1OTQy"
-      ASAAS_BASE_URL: "https://sandbox.asaas.com/api/v3"
-      ASAAS_WEBHOOK_SECRET: "whsec_hhwwxdTmKX30aXHwqiSGB9jtv9zYbM8IAo-oCDNeSdg"
-      WUZAPI_BASE_URL: "http://wuzapi:8080"
-      WUZAPI_ADMIN_TOKEN: "wuzapi_super_admin_secret_token_2026"
-      ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      ASAAS_API_KEY: ${ASAAS_API_KEY:-}
+      ASAAS_BASE_URL: ${ASAAS_BASE_URL:-https://sandbox.asaas.com/api/v3}
+      ASAAS_WEBHOOK_SECRET: ${ASAAS_WEBHOOK_SECRET:-}
+      WUZAPI_BASE_URL: http://wuzapi:8080
+      WUZAPI_ADMIN_TOKEN: ${WUZAPI_ADMIN_TOKEN}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      TZ: ${TZ:-America/Sao_Paulo}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - agendamento
 
-  # -------------------------------------------------------------
-  # WHATSAPP REST API SERVICE (WUZAPI)
-  # -------------------------------------------------------------
   wuzapi:
     image: asternic/wuzapi:latest
     container_name: agendamento_wuzapi
     restart: unless-stopped
-    ports:
-      - "8081:8080"
     environment:
-      WUZAPI_ADMIN_TOKEN: "wuzapi_super_admin_secret_token_2026"
+      WUZAPI_ADMIN_TOKEN: ${WUZAPI_ADMIN_TOKEN}
       WUZAPI_PORT: "8080"
-      TZ: "America/Sao_Paulo"
-      WEBHOOK_FORMAT: "json"
-      SESSION_DEVICE_NAME: "SistemaAgendamento"
+      TZ: ${TZ:-America/Sao_Paulo}
+      WEBHOOK_FORMAT: json
+      SESSION_DEVICE_NAME: SistemaAgendamento
     volumes:
       - wuzapi_data:/app/db
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - agendamento
 
-  # -------------------------------------------------------------
-  # FRONTEND (Vue 3 + Vite + Tailwind + Nginx)
-  # -------------------------------------------------------------
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
     container_name: agendamento_frontend
     restart: unless-stopped
-    ports:
-      - "5173:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 10s
+    networks:
+      - agendamento
 
-volumes:
-  postgres_data:
-  redis_data:
-  wuzapi_data:
+  caddy:
+    image: caddy:2-alpine
+    container_name: agendamento_caddy
+    restart: unless-stopped
+    profiles: ["prod"]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ${CADDYFILE_PATH:-./Caddyfile}:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - agendamento

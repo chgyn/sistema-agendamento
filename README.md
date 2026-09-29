@@ -62,9 +62,20 @@ sistema-agendamento/
 │   │       └── public/           # Wizard de Agendamento Público (/agendamento/:slug)
 │   └── Dockerfile.frontend
 ├── docs/
+│   ├── INSTALL.md                 # Instalação em VPS (script, DNS, Caddy)
+│   ├── DEPLOY.md                  # Operação, update, backup e troubleshooting
 │   ├── MODULO_PLANOS_E_ASSINATURAS_ASAAS.md
+│   ├── MODULO_WHATSAPP_WUZAPI_E_IA.md
 │   └── ARQUITETURA_E_API.md
+├── scripts/
+│   ├── backup.sh
+│   └── restore.sh
+├── Caddyfile
+├── Caddyfile.http
 ├── docker-compose.yml
+├── docker-compose.dev.yml
+├── install.sh
+├── .env.example
 └── README.md
 ```
 
@@ -72,12 +83,28 @@ sistema-agendamento/
 
 ## ⚡ Como Executar a Aplicação
 
-### Opção 1: Docker Compose (Recomendado)
+### Produção em VPS (Docker + Caddy + HTTPS)
 
-Suba toda a infraestrutura com um único comando:
+Contrate uma VPS Linux (Ubuntu 22.04/24.04 ou Debian 12), aponte o DNS para o IP do servidor e execute:
 
 ```bash
-docker compose up --build
+git clone <URL_DO_REPOSITORIO> sistema-agendamento
+cd sistema-agendamento
+sudo chmod +x install.sh scripts/*.sh
+sudo ./install.sh --domain app.seudominio.com.br --email admin@seudominio.com.br
+```
+
+Documentação completa:
+
+- [Instalação em VPS](docs/INSTALL.md)
+- [Deploy, backup, update e troubleshooting](docs/DEPLOY.md)
+
+### Opção 1: Docker Compose local (desenvolvimento)
+
+```bash
+cp .env.example .env
+# substitua os valores CHANGE_ME e deixe COMPOSE_PROFILES vazio
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
 Após a inicialização:
@@ -147,6 +174,8 @@ npm run build
 
 ## 📚 Documentação Técnica Detalhada
 
-- [Módulo de WhatsApp, WUZAPI & Atendimento com IA](file:///home/charles/projetos/sistema-agendamento/docs/MODULO_WHATSAPP_WUZAPI_E_IA.md)
-- [Módulo de Planos & Assinaturas Asaas](file:///home/charles/projetos/sistema-agendamento/docs/MODULO_PLANOS_E_ASSINATURAS_ASAAS.md)
-- [Arquitetura, Concorrência & Catálogo de APIs](file:///home/charles/projetos/sistema-agendamento/docs/ARQUITETURA_E_API.md)
+- [Instalação em VPS (Docker, Caddy, domínio e HTTPS)](docs/INSTALL.md)
+- [Deploy, operação, backup e troubleshooting](docs/DEPLOY.md)
+- [Módulo de WhatsApp, WUZAPI & Atendimento com IA](docs/MODULO_WHATSAPP_WUZAPI_E_IA.md)
+- [Módulo de Planos & Assinaturas Asaas](docs/MODULO_PLANOS_E_ASSINATURAS_ASAAS.md)
+- [Arquitetura, Concorrência & Catálogo de APIs](docs/ARQUITETURA_E_API.md)

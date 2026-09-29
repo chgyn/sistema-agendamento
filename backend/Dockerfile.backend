@@ -20,7 +20,7 @@ FROM alpine:3.20
 
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata wget
 ENV TZ=America/Sao_Paulo
 
 COPY --from=builder /app/api-bin /app/api-bin

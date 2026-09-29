@@ -30,8 +30,8 @@ func main() {
 		log.Fatalf("❌ Erro fatal ao conectar ao banco de dados: %v", err)
 	}
 
-	// 3. Popula dados de demonstração (se o banco estiver vazio)
-	if err := database.SeedInitialData(db); err != nil {
+	// 3. Aplica seeding de planos e usuário administrador inicial (ou dados demo se SEED_DEMO=true)
+	if err := database.ApplySeed(db, cfg); err != nil {
 		log.Printf("⚠️ Aviso durante seeding inicial: %v", err)
 	}
 

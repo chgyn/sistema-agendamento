@@ -23,8 +23,8 @@ func main() {
 }
 
 func runWorker(cfg *config.Config) error {
-	// 1. Conecta ao banco de dados
-	db, err := database.Connect(cfg)
+	// 1. Conecta ao banco de dados (sem AutoMigrate concorrente)
+	db, err := database.ConnectWorker(cfg)
 	if err != nil {
 		log.Fatalf("❌ Worker falhou ao conectar ao banco de dados: %v", err)
 	}

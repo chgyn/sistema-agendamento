@@ -30,6 +30,9 @@ type Config struct {
 	WUZAPIBaseURL      string
 	WUZAPIAdminToken   string
 	EncryptionKey      string
+	SeedDemo           bool
+	InitialAdminEmail  string
+	InitialAdminPassword string
 }
 
 func Load() *Config {
@@ -67,6 +70,10 @@ func Load() *Config {
 	wuzapiAdminToken := getEnv("WUZAPI_ADMIN_TOKEN", "wuzapi_super_admin_secret_token_2026")
 	encryptionKey := getEnv("ENCRYPTION_KEY", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 
+	seedDemo := getEnv("SEED_DEMO", "false") == "true"
+	initialAdminEmail := getEnv("INITIAL_ADMIN_EMAIL", "admin@plataforma.com")
+	initialAdminPassword := getEnv("INITIAL_ADMIN_PASSWORD", "admin123")
+
 	return &Config{
 		Port:               port,
 		DBDriver:           dbDriver,
@@ -90,6 +97,9 @@ func Load() *Config {
 		WUZAPIBaseURL:      wuzapiBaseURL,
 		WUZAPIAdminToken:   wuzapiAdminToken,
 		EncryptionKey:      encryptionKey,
+		SeedDemo:           seedDemo,
+		InitialAdminEmail:  initialAdminEmail,
+		InitialAdminPassword: initialAdminPassword,
 	}
 }
 

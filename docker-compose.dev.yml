@@ -1,0 +1,29 @@
+# Override para desenvolvimento local (portas na máquina host).
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# O Caddy fica desativado neste perfil; acesse o frontend em http://localhost:5173
+
+services:
+  caddy:
+    profiles: ["disabled"]
+
+  postgres:
+    ports:
+      - "5433:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  backend:
+    ports:
+      - "8080:8080"
+
+  wuzapi:
+    ports:
+      - "8081:8080"
+
+  frontend:
+    ports:
+      - "5173:80"

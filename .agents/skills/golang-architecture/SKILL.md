@@ -1,6 +1,9 @@
 ---
 name: golang-architecture
-description: Diretrizes de arquitetura Clean/Hexagonal, boas práticas Go 1.24+, Gin Gonic, GORM, Asynq, concorrência, criptografia AES-256-GCM e Vue 3 para o projeto sistema-agendamento.
+description: >-
+  Diretrizes de arquitetura Clean/Hexagonal, boas práticas Go 1.24+, Gin Gonic,
+  GORM, Asynq, concorrência, criptografia AES-256-GCM e Vue 3 para o projeto
+  sistema-agendamento.
 ---
 
 # 📐 Skill: Go (Golang) Clean Architecture & Best Practices Standard
