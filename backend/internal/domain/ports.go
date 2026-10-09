@@ -256,3 +256,45 @@ type WhatsAppRepository interface {
 	GetRecentMessages(ctx context.Context, conversationID uuid.UUID, limit int) ([]WhatsAppMessage, error)
 }
 
+// -------------------------------------------------------------
+// DASHBOARD ANALYTICS DTOs (SAAS FIGMA DASHBOARD)
+// -------------------------------------------------------------
+
+type TimeSeriesPoint struct {
+	Label        string  `json:"label"`        // Ex: "08:00", "10:00", "12:00"
+	Appointments int     `json:"appointments"` // Volume de agendamentos
+	Revenue      float64 `json:"revenue"`      // Faturamento no intervalo
+}
+
+type StatusDistribution struct {
+	Status     string  `json:"status"`     // Ex: "CONFIRMED", "COMPLETED", "CANCELLED"
+	Label      string  `json:"label"`      // Ex: "Confirmados", "Concluídos", "Cancelados"
+	Count      int     `json:"count"`      // Quantidade absoluta
+	Percentage float64 `json:"percentage"` // Ex: 75.5%
+	Color      string  `json:"color"`      // Hexadecimal (#4880FF, #FEC53D, #FF6647)
+}
+
+type TopServiceItem struct {
+	ServiceID     uuid.UUID `json:"service_id"`
+	ServiceName   string    `json:"service_name"`
+	Price         float64   `json:"price"`
+	BookingsCount int       `json:"bookings_count"`
+	Rating        float64   `json:"rating"` // Ex: 5.0
+}
+
+type DashboardAnalyticsResponse struct {
+	KPIs struct {
+		TodayAppointmentsCount int     `json:"today_appointments_count"`
+		ConfirmedCount         int     `json:"confirmed_count"`
+		CompletedCount         int     `json:"completed_count"`
+		PendingCount           int     `json:"pending_count"`
+		TodayRevenue           float64 `json:"today_revenue"`
+		TotalCustomersCount    int64   `json:"total_customers_count"`
+		ActiveProfessionals    int64   `json:"active_professionals_count"`
+	} `json:"kpis"`
+	ReportsChart       []TimeSeriesPoint    `json:"reports_chart"`
+	StatusDistribution []StatusDistribution `json:"status_distribution"`
+	TopServices        []TopServiceItem     `json:"top_services"`
+	RecentAppointments []Appointment        `json:"recent_appointments"`
+}
+

@@ -146,6 +146,7 @@ func SetupRoutes(cfg RouterConfig) {
 			{
 				// Dashboard & Métricas do Tenant
 				tenantOps.GET("/dashboard", cfg.DashboardHandler.GetKPIs)
+				tenantOps.GET("/dashboard/analytics", cfg.DashboardHandler.GetAnalytics)
 
 				// Agendamentos / Agenda (Operadores e Admins)
 				tenantOps.GET("/appointments", cfg.AppointmentHandler.List)

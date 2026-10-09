@@ -22,13 +22,36 @@ export default {
           950: '#431407',
         },
         surface: {
-          950: '#0c0d11', // Deep Obsidian background
-          900: '#121318', // Surface base (cards)
-          850: '#16171f', // Surface elevated
-          800: '#1c1e27', // Surface highlight
-          750: '#232532', // Borders & dividers
-          700: '#2b2d3d',
-          600: '#3f4257',
+          950: 'rgb(var(--surface-950) / <alpha-value>)',
+          900: 'rgb(var(--surface-900) / <alpha-value>)',
+          850: 'rgb(var(--surface-850) / <alpha-value>)',
+          800: 'rgb(var(--surface-800) / <alpha-value>)',
+          750: 'rgb(var(--surface-750) / <alpha-value>)',
+          700: 'rgb(var(--surface-700) / <alpha-value>)',
+          600: 'rgb(var(--surface-600) / <alpha-value>)',
+          500: 'rgb(var(--surface-500) / <alpha-value>)',
+          400: 'rgb(var(--surface-400) / <alpha-value>)',
+          300: 'rgb(var(--surface-300) / <alpha-value>)',
+          200: 'rgb(var(--surface-200) / <alpha-value>)',
+          100: 'rgb(var(--surface-100) / <alpha-value>)',
+        },
+        saas: {
+          blue: '#4880FF',
+          'blue-hover': '#386ff0',
+          'blue-light': '#E9F0FE',
+          bg: '#F5F6FA',
+          card: '#FFFFFF',
+          border: '#E4E7EB',
+          text: '#202224',
+          muted: '#718096',
+          yellow: '#FEC53D',
+          'yellow-light': '#FFF7E6',
+          coral: '#FF6647',
+          'coral-light': '#FFEFE7',
+          purple: '#8280FF',
+          'purple-light': '#ECEBFE',
+          teal: '#4CD7F6',
+          'teal-light': '#E2F8FC',
         },
       },
       fontFamily: {
@@ -36,8 +59,11 @@ export default {
         display: ['Outfit', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        'glow': '0 0 25px -4px rgba(249, 115, 22, 0.35)',
-        'glow-sm': '0 0 15px -3px rgba(249, 115, 22, 0.25)',
+        'card': '0 4px 20px 0 rgba(238, 242, 246, 0.7)',
+        'card-soft': '0 2px 12px 0 rgba(0, 0, 0, 0.04)',
+        'card-hover': '0 8px 24px 0 rgba(0, 0, 0, 0.08)',
+        'glow': '0 0 25px -4px rgba(72, 128, 255, 0.35)',
+        'glow-sm': '0 0 15px -3px rgba(72, 128, 255, 0.25)',
         'glow-emerald': '0 0 25px -5px rgba(16, 185, 129, 0.3)',
         'glow-purple': '0 0 25px -5px rgba(168, 85, 247, 0.35)',
       },

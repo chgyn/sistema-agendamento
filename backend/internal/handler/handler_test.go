@@ -45,6 +45,7 @@ func setupTestApp(t *testing.T) (*gin.Engine, *postgres.Repository, *jwt.JWTServ
 		&domain.Plan{},
 		&domain.Subscription{},
 		&domain.SubscriptionInvoice{},
+		&domain.SubscriptionAuditLog{},
 	)
 
 	repo := postgres.NewRepository(db)
@@ -57,6 +58,8 @@ func setupTestApp(t *testing.T) (*gin.Engine, *postgres.Repository, *jwt.JWTServ
 	subHandler := handler.NewSubscriptionHandler(subService)
 	cfg := &config.Config{AsaasWebhookSecret: "test-secret"}
 	webhookHandler := handler.NewWebhookHandler(cfg, nil, subService)
+	tenantService := service.NewTenantService(repo)
+	dashboardHandler := handler.NewDashboardHandler(tenantService)
 
 	r := gin.New()
 	handler.SetupRoutes(handler.RouterConfig{
@@ -68,6 +71,7 @@ func setupTestApp(t *testing.T) (*gin.Engine, *postgres.Repository, *jwt.JWTServ
 		PlanHandler:         planHandler,
 		SubscriptionHandler: subHandler,
 		WebhookHandler:      webhookHandler,
+		DashboardHandler:     dashboardHandler,
 	})
 
 	return r, repo, jwtSvc
@@ -189,6 +193,30 @@ func TestRouteAuthorizationAndTenantIsolation(t *testing.T) {
 
 		if wDash.Code != http.StatusOK {
 			t.Errorf("esperado 200 OK para ADMIN_GLOBAL em /admin/global-dashboard, obtido %d", wDash.Code)
+		}
+	})
+
+	// 6. Tenant Admin pode acessar /admin/dashboard/analytics (Padrão Figma SAAS)
+	t.Run("Tenant Admin pode acessar /admin/dashboard/analytics", func(t *testing.T) {
+		plan := domain.Plan{ID: uuid.New(), Name: "Plano Pro", IsActive: true}
+		_ = repo.DB().Create(&plan)
+		subT1 := domain.Subscription{
+			ID:       uuid.New(),
+			TenantID: t1ID,
+			PlanID:   plan.ID,
+			Status:   domain.SubscriptionStatusActive,
+		}
+		if err := repo.DB().Create(&subT1).Error; err != nil {
+			t.Fatalf("falha ao criar sub: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/dashboard/analytics", nil)
+		req.Header.Set("Authorization", "Bearer "+tokenAdminT1)
+		w := httptest.NewRecorder()
+		engine.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("esperado 200 OK para Tenant Admin em /admin/dashboard/analytics, obtido %d, body: %s", w.Code, w.Body.String())
 		}
 	})
 }

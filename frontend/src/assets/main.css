@@ -3,61 +3,95 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --surface-950: 255 255 255;
+    --surface-900: 255 255 255;
+    --surface-850: 248 249 253;
+    --surface-800: 240 242 246;
+    --surface-750: 228 231 235;
+    --surface-700: 226 232 240;
+    --surface-600: 203 213 225;
+    --surface-500: 148 163 184;
+    --surface-400: 113 128 150;
+    --surface-300: 74 85 104;
+    --surface-200: 45 55 72;
+    --surface-100: 32 34 36;
+  }
+
+  .dark {
+    --surface-950: 12 13 17;
+    --surface-900: 18 19 24;
+    --surface-850: 22 23 31;
+    --surface-800: 28 30 39;
+    --surface-750: 35 37 50;
+    --surface-700: 43 45 61;
+    --surface-600: 63 66 87;
+    --surface-500: 100 116 139;
+    --surface-400: 156 163 175;
+    --surface-300: 203 213 225;
+    --surface-200: 226 232 240;
+    --surface-100: 243 244 246;
+  }
+
   body {
-    @apply bg-[#0d0e12] text-zinc-100 font-sans antialiased selection:bg-orange-500 selection:text-zinc-950 min-h-screen;
+    @apply bg-[#F5F6FA] text-[#202224] dark:bg-[#0d0e12] dark:text-zinc-100 font-sans antialiased selection:bg-[#4880FF] selection:text-white min-h-screen transition-colors duration-200;
   }
 
   h1, h2, h3, h4 {
     font-family: 'Outfit', sans-serif;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
   }
 }
 
-/* Scrollbar estilizada moderna */
+/* Scrollbar estilizada moderna (Adaptação Light / Dark) */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(13, 14, 18, 0.8);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(43, 45, 61, 0.85);
+  background: rgba(160, 174, 192, 0.4);
   border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(249, 115, 22, 0.8);
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(43, 45, 61, 0.85);
 }
 
-/* Efeito Glassmorphism & Cards no Estilo Obsidian */
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(72, 128, 255, 0.7);
+}
+
+/* Cards & Componentes no Padrão Figma SAAS Dashboard */
+.saas-card {
+  @apply bg-white dark:bg-[#121318] border border-gray-100/90 dark:border-zinc-800/80 rounded-2xl shadow-card dark:shadow-none transition-all duration-200;
+}
+
+.saas-card-flat {
+  @apply bg-white dark:bg-[#121318] border border-gray-200/70 dark:border-zinc-800 rounded-2xl transition-all duration-200;
+}
+
+/* Efeito Glassmorphism & Cards anteriores (compatibilidade mantida) */
 .glass-panel {
-  background: rgba(18, 19, 24, 0.85);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  @apply bg-white dark:bg-[#121318]/90 border border-gray-100 dark:border-zinc-800 shadow-card dark:shadow-none;
 }
 
 .glass-card {
-  background: rgba(24, 25, 33, 0.75);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  @apply bg-white/90 dark:bg-[#181921]/80 border border-gray-100 dark:border-zinc-800/70 shadow-card-soft dark:shadow-none;
 }
 
 .glass-card-elevated {
-  background: rgba(30, 32, 42, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  @apply bg-white dark:bg-[#1c1e27] border border-gray-200/80 dark:border-zinc-700 shadow-card-hover dark:shadow-none;
 }
 
 /* Efeito Glow para Cards Ativos */
 .card-active-glow {
-  box-shadow: 0 0 20px -3px rgba(249, 115, 22, 0.3);
-  border-color: rgba(249, 115, 22, 0.6) !important;
+  box-shadow: 0 0 20px -3px rgba(72, 128, 255, 0.35);
+  border-color: rgba(72, 128, 255, 0.6) !important;
 }
 
 /* Transições suaves de interação */

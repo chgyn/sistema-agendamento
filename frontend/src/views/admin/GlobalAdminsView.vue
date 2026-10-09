@@ -3,22 +3,22 @@
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold mb-2">
+        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 text-xs font-semibold mb-2">
           <ShieldCheck class="w-3.5 h-3.5" />
           <span>Super Administradores da Plataforma</span>
         </div>
-        <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight font-['Outfit'] flex items-center gap-2.5">
-          <ShieldCheck class="w-8 h-8 text-purple-400" />
+        <h1 class="text-2xl sm:text-3xl font-black text-[#202224] dark:text-white tracking-tight font-['Outfit'] flex items-center gap-2.5">
+          <ShieldCheck class="w-8 h-8 text-purple-600 dark:text-purple-400" />
           <span>Administradores Gerais</span>
         </h1>
-        <p class="text-xs sm:text-sm text-surface-400 mt-1">
+        <p class="text-xs sm:text-sm text-[#718096] dark:text-surface-400 mt-1">
           Usuários com permissão administrativa irrestrita sobre toda a plataforma multi-tenant.
         </p>
       </div>
 
       <button
         @click="openCreateModal"
-        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-bold shadow-lg shadow-purple-900/30 hover:shadow-purple-700/40 transition active:scale-95 shrink-0"
+        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-bold shadow-lg shadow-purple-900/20 hover:shadow-purple-700/30 transition active:scale-95 shrink-0"
       >
         <UserPlus class="w-4 h-4" />
         <span>Novo Administrador Geral</span>
@@ -26,27 +26,27 @@
     </div>
 
     <!-- Alert de Segurança -->
-    <div class="p-4 sm:p-5 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-start gap-3.5 shadow-lg shadow-purple-950/20">
-      <div class="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0 mt-0.5">
+    <div class="p-4 sm:p-5 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-start gap-3.5 shadow-sm">
+      <div class="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-600 dark:text-purple-300 shrink-0 mt-0.5">
         <ShieldAlert class="w-5 h-5" />
       </div>
-      <div class="text-xs text-purple-200 leading-relaxed">
-        <span class="font-bold text-white block text-sm mb-0.5 font-['Outfit']">Atenção ao controle de acesso central:</span>
+      <div class="text-xs text-purple-900 dark:text-purple-200 leading-relaxed">
+        <span class="font-bold text-[#202224] dark:text-white block text-sm mb-0.5 font-['Outfit']">Atenção ao controle de acesso central:</span>
         Os Administradores Gerais têm acesso total a todos os estabelecimentos, relatórios financeiros e configurações da plataforma. Conceda esse acesso apenas a membros confiáveis da equipe de administração central.
       </div>
     </div>
 
     <!-- Loading -->
     <div v-if="loading" class="text-center py-20">
-      <Loader2 class="w-9 h-9 text-purple-400 animate-spin mx-auto mb-3" />
-      <p class="text-sm text-surface-400">Carregando administradores gerais...</p>
+      <Loader2 class="w-9 h-9 text-purple-500 animate-spin mx-auto mb-3" />
+      <p class="text-sm text-[#718096] dark:text-surface-400">Carregando administradores gerais...</p>
     </div>
 
     <!-- Tabela de Administradores Gerais -->
-    <div v-else class="glass-card overflow-hidden shadow-2xl">
+    <div v-else class="saas-card overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
-          <thead class="bg-surface-950/90 border-b border-surface-800 text-[11px] text-surface-400 uppercase tracking-wider font-bold">
+          <thead class="bg-gray-50/90 dark:bg-surface-950/90 border-b border-gray-200/80 dark:border-surface-800 text-[11px] text-gray-500 dark:text-surface-400 uppercase tracking-wider font-bold">
             <tr>
               <th class="py-4 px-5">Administrador</th>
               <th class="py-4 px-5">Escopo</th>
@@ -55,26 +55,26 @@
               <th class="py-4 px-5 text-right">Ações</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-surface-800/60">
-            <tr v-for="admin in admins" :key="admin.id" class="hover:bg-surface-800/40 transition">
+          <tbody class="divide-y divide-gray-100 dark:divide-surface-800/60">
+            <tr v-for="admin in admins" :key="admin.id" class="hover:bg-gray-50/70 dark:hover:bg-surface-800/40 transition">
               <td class="py-4 px-5">
                 <div class="flex items-center gap-3.5">
-                  <div class="w-10 h-10 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center font-bold text-sm text-purple-300 shrink-0 font-['Outfit'] shadow-sm">
+                  <div class="w-10 h-10 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center font-bold text-sm text-purple-600 dark:text-purple-300 shrink-0 font-['Outfit'] shadow-sm">
                     {{ admin.name.charAt(0) }}
                   </div>
                   <div class="min-w-0">
-                    <p class="font-bold text-white text-sm truncate flex items-center gap-2 font-['Outfit']">
+                    <p class="font-bold text-[#202224] dark:text-white text-sm truncate flex items-center gap-2 font-['Outfit']">
                       <span>{{ admin.name }}</span>
-                      <span v-if="admin.id === authStore.user?.id" class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40">Você</span>
+                      <span v-if="admin.id === authStore.user?.id" class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-300 font-bold border border-purple-500/30">Você</span>
                     </p>
-                    <p class="text-xs text-surface-400 truncate">{{ admin.email }}</p>
+                    <p class="text-xs text-gray-400 dark:text-surface-400 truncate">{{ admin.email }}</p>
                   </div>
                 </div>
               </td>
 
               <td class="py-4 px-5">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-500/10 text-purple-300 border border-purple-500/30">
-                  <Crown class="w-3 h-3 text-purple-400" />
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/30">
+                  <Crown class="w-3 h-3 text-purple-600 dark:text-purple-400" />
                   <span>Acesso Global</span>
                 </span>
               </td>
@@ -82,14 +82,14 @@
               <td class="py-4 px-5">
                 <span
                   class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border"
-                  :class="admin.is_active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'"
+                  :class="admin.is_active ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'"
                 >
-                  <span class="w-1.5 h-1.5 rounded-full" :class="admin.is_active ? 'bg-emerald-400' : 'bg-rose-400'"></span>
+                  <span class="w-1.5 h-1.5 rounded-full" :class="admin.is_active ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-rose-500 dark:bg-rose-400'"></span>
                   {{ admin.is_active ? 'Ativo' : 'Inativo' }}
                 </span>
               </td>
 
-              <td class="py-4 px-5 text-xs text-surface-400">
+              <td class="py-4 px-5 text-xs text-gray-500 dark:text-surface-400">
                 {{ formatDate(admin.created_at) }}
               </td>
 
@@ -98,7 +98,7 @@
                   <button
                     @click="openEditModal(admin)"
                     title="Editar Administrador"
-                    class="p-2 rounded-xl bg-surface-800 hover:bg-surface-700 text-surface-300 hover:text-white transition"
+                    class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 dark:bg-surface-800 dark:hover:bg-surface-700 dark:text-surface-300 dark:hover:text-white transition"
                   >
                     <Pencil class="w-4 h-4" />
                   </button>
@@ -108,7 +108,7 @@
                     @click="toggleStatus(admin)"
                     :title="admin.is_active ? 'Inativar Administrador' : 'Ativar Administrador'"
                     class="p-2 rounded-xl transition"
-                    :class="admin.is_active ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'"
+                    :class="admin.is_active ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'"
                   >
                     <Power class="w-4 h-4" />
                   </button>
@@ -123,65 +123,65 @@
     <!-- MODAL: Novo Administrador Geral -->
     <div
       v-if="showCreateModal"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-950/80 backdrop-blur-md overflow-y-auto"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-surface-950/80 backdrop-blur-sm overflow-y-auto"
     >
-      <div class="glass-card-elevated w-full max-w-md shadow-2xl my-8 flex flex-col">
-        <div class="flex items-center justify-between p-5 sm:p-6 border-b border-surface-800/80">
+      <div class="bg-white dark:bg-[#121318] border border-gray-200 dark:border-surface-800 rounded-2xl w-full max-w-md shadow-2xl my-8 flex flex-col">
+        <div class="flex items-center justify-between p-5 sm:p-6 border-b border-gray-100 dark:border-surface-800/80">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+            <div class="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
               <ShieldCheck class="w-4 h-4" />
             </div>
             <div>
-              <h3 class="font-bold text-white text-base font-['Outfit']">Novo Administrador Geral</h3>
-              <p class="text-xs text-surface-400">Cadastre outro administrador global da plataforma.</p>
+              <h3 class="font-bold text-[#202224] dark:text-white text-base font-['Outfit']">Novo Administrador Geral</h3>
+              <p class="text-xs text-[#718096] dark:text-surface-400">Cadastre outro administrador global da plataforma.</p>
             </div>
           </div>
-          <button @click="showCreateModal = false" class="p-1.5 rounded-lg text-surface-400 hover:text-white hover:bg-surface-800 transition">
+          <button @click="showCreateModal = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:text-surface-400 dark:hover:text-white dark:hover:bg-surface-800 transition">
             <X class="w-5 h-5" />
           </button>
         </div>
 
         <div class="p-6 space-y-4">
-          <div v-if="createError" class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
+          <div v-if="createError" class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-300 text-xs">
             {{ createError }}
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Nome Completo *</label>
+            <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">Nome Completo *</label>
             <input
               v-model="createForm.name"
               type="text"
               placeholder="Ex: Roberto Administrador"
-              class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
               required
             />
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">E-mail de Acesso *</label>
+            <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">E-mail de Acesso *</label>
             <input
               v-model="createForm.email"
               type="email"
               placeholder="roberto@plataforma.com"
-              class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
               required
             />
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Senha de Acesso *</label>
+            <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">Senha de Acesso *</label>
             <input
               v-model="createForm.password"
               type="password"
               placeholder="Mínimo 6 caracteres"
-              class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
               required
             />
           </div>
         </div>
 
-        <div class="p-5 sm:p-6 border-t border-surface-800/80 flex items-center justify-end gap-3 bg-surface-950/60 rounded-b-2xl">
-          <button @click="showCreateModal = false" class="px-4 py-2.5 rounded-xl text-surface-400 hover:text-white text-sm font-medium transition">
+        <div class="p-5 sm:p-6 border-t border-gray-100 dark:border-surface-800/80 flex items-center justify-end gap-3 bg-gray-50/70 dark:bg-surface-950/60 rounded-b-2xl">
+          <button @click="showCreateModal = false" class="px-4 py-2.5 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-surface-400 dark:hover:text-white text-sm font-medium transition">
             Cancelar
           </button>
           <button
@@ -199,56 +199,56 @@
     <!-- MODAL: Editar Administrador Geral -->
     <div
       v-if="showEditModal && editingAdmin"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-950/80 backdrop-blur-md overflow-y-auto"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-surface-950/80 backdrop-blur-sm overflow-y-auto"
     >
-      <div class="glass-card-elevated w-full max-w-md shadow-2xl my-8 flex flex-col">
-        <div class="flex items-center justify-between p-5 sm:p-6 border-b border-surface-800/80">
+      <div class="bg-white dark:bg-[#121318] border border-gray-200 dark:border-surface-800 rounded-2xl w-full max-w-md shadow-2xl my-8 flex flex-col">
+        <div class="flex items-center justify-between p-5 sm:p-6 border-b border-gray-100 dark:border-surface-800/80">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+            <div class="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
               <Pencil class="w-4 h-4" />
             </div>
             <div>
-              <h3 class="font-bold text-white text-base font-['Outfit']">Editar Administrador Geral</h3>
-              <p class="text-xs text-surface-400">Atualize dados cadastrais ou redefina a senha.</p>
+              <h3 class="font-bold text-[#202224] dark:text-white text-base font-['Outfit']">Editar Administrador Geral</h3>
+              <p class="text-xs text-[#718096] dark:text-surface-400">Atualize dados cadastrais ou redefina a senha.</p>
             </div>
           </div>
-          <button @click="showEditModal = false" class="p-1.5 rounded-lg text-surface-400 hover:text-white hover:bg-surface-800 transition">
+          <button @click="showEditModal = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:text-surface-400 dark:hover:text-white dark:hover:bg-surface-800 transition">
             <X class="w-5 h-5" />
           </button>
         </div>
 
         <div class="p-6 space-y-4">
           <div>
-            <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Nome Completo</label>
-            <input v-model="editingAdmin.name" type="text" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition" />
+            <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">Nome Completo</label>
+            <input v-model="editingAdmin.name" type="text" class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition" />
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">E-mail</label>
-            <input v-model="editingAdmin.email" type="email" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition" />
+            <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">E-mail</label>
+            <input v-model="editingAdmin.email" type="email" class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition" />
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Redefinir Senha (opcional)</label>
+            <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">Redefinir Senha (opcional)</label>
             <input
               v-model="editPassword"
               type="password"
               placeholder="Deixe em branco para manter a atual"
-              class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
             />
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Status</label>
-            <select v-model="editingAdmin.is_active" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition">
+            <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">Status</label>
+            <select v-model="editingAdmin.is_active" class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition">
               <option :value="true">Ativo</option>
               <option :value="false">Inativo</option>
             </select>
           </div>
         </div>
 
-        <div class="p-5 sm:p-6 border-t border-surface-800/80 flex items-center justify-end gap-3 bg-surface-950/60 rounded-b-2xl">
-          <button @click="showEditModal = false" class="px-4 py-2.5 rounded-xl text-surface-400 hover:text-white text-sm font-medium transition">
+        <div class="p-5 sm:p-6 border-t border-gray-100 dark:border-surface-800/80 flex items-center justify-end gap-3 bg-gray-50/70 dark:bg-surface-950/60 rounded-b-2xl">
+          <button @click="showEditModal = false" class="px-4 py-2.5 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-surface-400 dark:hover:text-white text-sm font-medium transition">
             Cancelar
           </button>
           <button

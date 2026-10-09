@@ -3,22 +3,22 @@
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold mb-2">
+        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 text-xs font-semibold mb-2">
           <Layers class="w-3.5 h-3.5" />
           <span>Catálogo Comercial da Plataforma</span>
         </div>
-        <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight font-['Outfit'] flex items-center gap-2.5">
-          <CreditCard class="w-8 h-8 text-purple-400" />
+        <h1 class="text-2xl sm:text-3xl font-black text-[#202224] dark:text-white tracking-tight font-['Outfit'] flex items-center gap-2.5">
+          <CreditCard class="w-8 h-8 text-purple-600 dark:text-purple-400" />
           <span>Planos de Assinatura</span>
         </h1>
-        <p class="text-xs sm:text-sm text-surface-400 mt-1">
+        <p class="text-xs sm:text-sm text-[#718096] dark:text-surface-400 mt-1">
           Gerencie a grade comercial de planos, periodicidades e limites para contratação dos estabelecimentos.
         </p>
       </div>
 
       <button
         @click="openCreateModal"
-        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-bold shadow-lg shadow-purple-900/30 hover:shadow-purple-700/40 transition active:scale-95 shrink-0"
+        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-bold shadow-lg shadow-purple-900/20 hover:shadow-purple-700/30 transition active:scale-95 shrink-0"
       >
         <Plus class="w-4 h-4" />
         <span>Novo Plano Comercial</span>
@@ -27,34 +27,34 @@
 
     <!-- KPI Summary Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div class="glass-card p-5 flex items-center gap-4 group hover:border-purple-500/30 transition-colors">
-        <div class="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-105 transition-transform shrink-0">
+      <div class="saas-card p-5 flex items-center gap-4 group hover:border-purple-500/40 transition-colors">
+        <div class="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-105 transition-transform shrink-0">
           <Package class="w-6 h-6" />
         </div>
         <div>
-          <p class="text-xs text-surface-400 font-medium">Total de Planos</p>
-          <p class="text-2xl font-black text-white font-['Outfit'] mt-0.5">{{ plans.length }}</p>
+          <p class="text-xs text-[#718096] dark:text-surface-400 font-medium">Total de Planos</p>
+          <p class="text-2xl font-black text-[#202224] dark:text-white font-['Outfit'] mt-0.5">{{ plans.length }}</p>
         </div>
       </div>
 
-      <div class="glass-card p-5 flex items-center gap-4 group hover:border-emerald-500/30 transition-colors">
-        <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform shrink-0">
+      <div class="saas-card p-5 flex items-center gap-4 group hover:border-emerald-500/40 transition-colors">
+        <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform shrink-0">
           <CheckCircle2 class="w-6 h-6" />
         </div>
         <div>
-          <p class="text-xs text-surface-400 font-medium">Planos Ativos para Venda</p>
-          <p class="text-2xl font-black text-emerald-400 font-['Outfit'] mt-0.5">{{ activeCount }}</p>
+          <p class="text-xs text-[#718096] dark:text-surface-400 font-medium">Planos Ativos para Venda</p>
+          <p class="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-['Outfit'] mt-0.5">{{ activeCount }}</p>
         </div>
       </div>
 
-      <div class="glass-card p-5 flex items-center gap-4 group hover:border-indigo-500/30 transition-colors">
-        <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-105 transition-transform shrink-0">
+      <div class="saas-card p-5 flex items-center gap-4 group hover:border-indigo-500/40 transition-colors">
+        <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-105 transition-transform shrink-0">
           <Layers class="w-6 h-6" />
         </div>
         <div>
-          <p class="text-xs text-surface-400 font-medium">Integração Asaas Recorrente</p>
-          <p class="text-sm font-bold text-indigo-300 mt-1 flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <p class="text-xs text-[#718096] dark:text-surface-400 font-medium">Integração Asaas Recorrente</p>
+          <p class="text-sm font-bold text-indigo-600 dark:text-indigo-300 mt-1 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span>API v3 Conectada</span>
           </p>
         </div>
@@ -62,21 +62,21 @@
     </div>
 
     <!-- Filtros e Busca -->
-    <div class="glass-card p-3 sm:p-4 flex flex-col sm:flex-row items-center gap-3">
+    <div class="saas-card p-3 sm:p-4 flex flex-col sm:flex-row items-center gap-3">
       <div class="relative flex-1 w-full">
-        <Search class="w-4 h-4 text-surface-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+        <Search class="w-4 h-4 text-gray-400 dark:text-surface-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
         <input
           v-model="searchTerm"
           type="text"
           placeholder="Buscar por nome ou descrição do plano..."
-          class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-surface-100 placeholder-surface-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+          class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50/80 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-surface-100 placeholder-gray-400 dark:placeholder-surface-500 focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
         />
       </div>
 
       <div class="flex items-center gap-2 w-full sm:w-auto">
         <select
           v-model="statusFilter"
-          class="w-full sm:w-48 py-2.5 px-3.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-surface-200 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+          class="w-full sm:w-48 py-2.5 px-3.5 rounded-xl bg-gray-50/80 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-surface-200 focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
         >
           <option value="ALL">Todos os status</option>
           <option value="ACTIVE">Apenas Ativos</option>
@@ -89,17 +89,17 @@
 
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-20">
-      <Loader2 class="w-9 h-9 text-purple-400 animate-spin mx-auto mb-3" />
-      <p class="text-sm text-surface-400">Carregando planos de assinatura...</p>
+      <Loader2 class="w-9 h-9 text-purple-500 animate-spin mx-auto mb-3" />
+      <p class="text-sm text-[#718096] dark:text-surface-400">Carregando planos de assinatura...</p>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="filteredPlans.length === 0" class="glass-card p-12 text-center">
-      <div class="w-14 h-14 rounded-2xl bg-surface-800/80 border border-surface-700/60 flex items-center justify-center mx-auto mb-4 text-surface-500">
+    <div v-else-if="filteredPlans.length === 0" class="saas-card p-12 text-center">
+      <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-surface-800/80 border border-gray-200 dark:border-surface-700/60 flex items-center justify-center mx-auto mb-4 text-gray-400 dark:text-surface-500">
         <Package class="w-7 h-7" />
       </div>
-      <h3 class="text-base font-bold text-white font-['Outfit']">Nenhum plano comercial encontrado</h3>
-      <p class="text-xs text-surface-400 mt-1.5 max-w-sm mx-auto">
+      <h3 class="text-base font-bold text-[#202224] dark:text-white font-['Outfit']">Nenhum plano comercial encontrado</h3>
+      <p class="text-xs text-[#718096] dark:text-surface-400 mt-1.5 max-w-sm mx-auto">
         {{ searchTerm ? 'Nenhum resultado corresponde aos filtros aplicados.' : 'Cadastre o primeiro plano para disponibilizar no cadastro dos estabelecimentos.' }}
       </p>
     </div>
@@ -109,8 +109,8 @@
       <div
         v-for="plan in filteredPlans"
         :key="plan.id"
-        class="glass-card p-6 flex flex-col justify-between transition-all duration-300 relative group overflow-hidden"
-        :class="plan.is_active ? 'hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-950/30 hover:-translate-y-1' : 'opacity-70 border-surface-800'"
+        class="saas-card p-6 flex flex-col justify-between transition-all duration-300 relative group overflow-hidden"
+        :class="plan.is_active ? 'hover:border-purple-500/50 hover:shadow-xl hover:-translate-y-1' : 'opacity-70 border-gray-200 dark:border-surface-800'"
       >
         <div class="space-y-4">
           <!-- Top Row: Nome, Status, Tipo (Gratuito/Pago) e Ciclo -->
@@ -119,13 +119,13 @@
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span
                   v-if="plan.is_free"
-                  class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-sm"
+                  class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm"
                 >
                   Gratuito
                 </span>
                 <span
                   v-else
-                  class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/10 text-purple-300 border border-purple-500/30"
+                  class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/30"
                 >
                   Asaas Recorrente
                 </span>
@@ -137,7 +137,7 @@
                   {{ formatCycle(plan.billing_cycle) }}
                 </span>
               </div>
-              <h3 class="text-lg font-black text-white font-['Outfit'] mt-2 group-hover:text-purple-300 transition">
+              <h3 class="text-lg font-black text-[#202224] dark:text-white font-['Outfit'] mt-2 group-hover:text-purple-600 dark:group-hover:text-purple-300 transition">
                 {{ plan.name }}
               </h3>
             </div>
@@ -146,44 +146,44 @@
               @click="toggleStatus(plan)"
               :title="plan.is_active ? 'Desativar contratação' : 'Ativar contratação'"
               class="px-2.5 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 transition"
-              :class="plan.is_active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-surface-800 text-surface-400 border-surface-700 hover:bg-surface-750'"
+              :class="plan.is_active ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-gray-100 dark:bg-surface-800 text-gray-500 dark:text-surface-400 border-gray-200 dark:border-surface-700 hover:bg-gray-200 dark:hover:bg-surface-750'"
             >
-              <span class="w-1.5 h-1.5 rounded-full" :class="plan.is_active ? 'bg-emerald-400' : 'bg-surface-500'"></span>
+              <span class="w-1.5 h-1.5 rounded-full" :class="plan.is_active ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-gray-400 dark:bg-surface-500'"></span>
               <span>{{ plan.is_active ? 'Ativo' : 'Inativo' }}</span>
             </button>
           </div>
 
           <!-- Preço -->
-          <div class="pt-3 border-t border-surface-800/80">
+          <div class="pt-3 border-t border-gray-100 dark:border-surface-800/80">
             <div v-if="plan.is_free" class="flex items-baseline gap-1.5">
-              <span class="text-2xl font-black text-emerald-400 font-['Outfit'] tracking-tight">
+              <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-['Outfit'] tracking-tight">
                 Gratuito
               </span>
-              <span class="text-xs text-surface-400 font-medium">(R$ 0,00)</span>
+              <span class="text-xs text-[#718096] dark:text-surface-400 font-medium">(R$ 0,00)</span>
             </div>
             <div v-else class="flex items-baseline gap-1">
-              <span class="text-xs text-surface-400 font-semibold">R$</span>
-              <span class="text-3xl font-black text-white font-['Outfit'] tracking-tight">
+              <span class="text-xs text-[#718096] dark:text-surface-400 font-semibold">R$</span>
+              <span class="text-3xl font-black text-[#202224] dark:text-white font-['Outfit'] tracking-tight">
                 {{ plan.price.toFixed(2).replace('.', ',') }}
               </span>
-              <span class="text-xs text-surface-400">/ {{ formatCycleShort(plan.billing_cycle) }}</span>
+              <span class="text-xs text-[#718096] dark:text-surface-400">/ {{ formatCycleShort(plan.billing_cycle) }}</span>
             </div>
-            <p v-if="plan.description" class="text-xs text-surface-400 mt-2 leading-relaxed line-clamp-2">
+            <p v-if="plan.description" class="text-xs text-[#718096] dark:text-surface-400 mt-2 leading-relaxed line-clamp-2">
               {{ plan.description }}
             </p>
           </div>
 
           <!-- Limites e Recursos -->
-          <div class="pt-3 border-t border-surface-800/80 space-y-2 text-xs">
-            <div class="flex items-center justify-between text-surface-300">
-              <span class="text-surface-400">Profissionais:</span>
-              <span class="font-bold text-white">
+          <div class="pt-3 border-t border-gray-100 dark:border-surface-800/80 space-y-2 text-xs">
+            <div class="flex items-center justify-between text-gray-600 dark:text-surface-300">
+              <span class="text-[#718096] dark:text-surface-400">Profissionais:</span>
+              <span class="font-bold text-[#202224] dark:text-white">
                 {{ plan.max_professionals === 0 ? 'Ilimitados' : `Até ${plan.max_professionals}` }}
               </span>
             </div>
-            <div class="flex items-center justify-between text-surface-300">
-              <span class="text-surface-400">Serviços:</span>
-              <span class="font-bold text-white">
+            <div class="flex items-center justify-between text-gray-600 dark:text-surface-300">
+              <span class="text-[#718096] dark:text-surface-400">Serviços:</span>
+              <span class="font-bold text-[#202224] dark:text-white">
                 {{ plan.max_services === 0 ? 'Ilimitados' : `Até ${plan.max_services}` }}
               </span>
             </div>
@@ -193,10 +193,10 @@
               <div
                 v-for="(feat, idx) in parseFeatures(plan.features)"
                 :key="idx"
-                class="flex items-center gap-2 text-surface-300 text-xs"
+                class="flex items-center gap-2 text-gray-700 dark:text-surface-300 text-xs"
               >
                 <div class="w-4 h-4 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
-                  <Check class="w-3 h-3 text-emerald-400" />
+                  <Check class="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <span class="truncate">{{ feat }}</span>
               </div>
@@ -205,13 +205,13 @@
         </div>
 
         <!-- Footer Card Actions -->
-        <div class="pt-4 mt-5 border-t border-surface-800/80 flex items-center justify-between gap-2">
-          <span class="text-[11px] text-surface-500 font-mono">Ordem: #{{ plan.sort_order }}</span>
+        <div class="pt-4 mt-5 border-t border-gray-100 dark:border-surface-800/80 flex items-center justify-between gap-2">
+          <span class="text-[11px] text-gray-400 dark:text-surface-500 font-mono">Ordem: #{{ plan.sort_order }}</span>
 
           <div class="flex items-center gap-1.5">
             <button
               @click="openEditModal(plan)"
-              class="p-2 rounded-xl bg-surface-800 hover:bg-surface-700 text-surface-300 hover:text-white transition"
+              class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 dark:bg-surface-800 dark:hover:bg-surface-750 dark:text-surface-300 dark:hover:text-white transition"
               title="Editar plano"
             >
               <Pencil class="w-4 h-4" />
@@ -219,7 +219,7 @@
 
             <button
               @click="deletePlan(plan)"
-              class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition"
+              class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition"
               title="Excluir plano"
             >
               <Trash2 class="w-4 h-4" />
@@ -232,30 +232,30 @@
     <!-- MODAL: Criar / Editar Plano -->
     <div
       v-if="showModal"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-950/80 backdrop-blur-md overflow-y-auto"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-surface-950/80 backdrop-blur-sm overflow-y-auto"
     >
-      <div class="glass-card-elevated w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl my-8">
+      <div class="bg-white dark:bg-[#121318] border border-gray-200 dark:border-surface-800 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl my-8">
         <!-- Modal Header -->
-        <div class="flex items-center justify-between p-5 sm:p-6 border-b border-surface-800/80">
+        <div class="flex items-center justify-between p-5 sm:p-6 border-b border-gray-100 dark:border-surface-800/80">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+            <div class="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
               <CreditCard class="w-4 h-4" />
             </div>
             <div>
-              <h3 class="font-bold text-white text-base font-['Outfit']">
+              <h3 class="font-bold text-[#202224] dark:text-white text-base font-['Outfit']">
                 {{ isEditing ? 'Editar Plano Comercial' : 'Novo Plano de Assinatura' }}
               </h3>
-              <p class="text-xs text-surface-400">Configure os limites e termos para este plano.</p>
+              <p class="text-xs text-[#718096] dark:text-surface-400">Configure os limites e termos para este plano.</p>
             </div>
           </div>
-          <button @click="showModal = false" class="p-1.5 rounded-lg text-surface-400 hover:text-white hover:bg-surface-800 transition">
+          <button @click="showModal = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:text-surface-400 dark:hover:text-white dark:hover:bg-surface-800 transition">
             <X class="w-5 h-5" />
           </button>
         </div>
 
         <!-- Modal Body -->
         <div class="p-6 overflow-y-auto space-y-4">
-          <div v-if="errorMessage" class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
+          <div v-if="errorMessage" class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-300 text-xs">
             {{ errorMessage }}
           </div>
 
@@ -263,44 +263,44 @@
             <!-- Toggle Plano Gratuito -->
             <div class="sm:col-span-2 p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between">
               <div>
-                <span class="text-xs font-bold text-white flex items-center gap-1.5">
-                  <Sparkles class="w-3.5 h-3.5 text-emerald-400" />
+                <span class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                  <Sparkles class="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
                   <span>Plano de Assinatura Gratuito</span>
                 </span>
-                <span class="text-[11px] text-surface-400 block mt-0.5">
+                <span class="text-[11px] text-[#718096] dark:text-surface-400 block mt-0.5">
                   Estabelecimentos cadastrados neste plano têm ativação imediata sem cobranças ou integração no Asaas.
                 </span>
               </div>
               <label class="relative inline-flex items-center cursor-pointer shrink-0">
                 <input type="checkbox" v-model="form.is_free" @change="onToggleFreePlan" class="sr-only peer" />
-                <div class="w-11 h-6 bg-surface-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-surface-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                <div class="w-11 h-6 bg-gray-200 dark:bg-surface-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-surface-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
               </label>
             </div>
 
             <div class="sm:col-span-2">
-              <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Nome do Plano *</label>
+              <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">Nome do Plano *</label>
               <input
                 v-model="form.name"
                 type="text"
                 required
                 placeholder="Ex: Plano Profissional"
-                class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
               />
             </div>
 
             <div class="sm:col-span-2">
-              <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Descrição Comercial</label>
+              <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">Descrição Comercial</label>
               <textarea
                 v-model="form.description"
                 rows="2"
                 placeholder="Breve resumo da proposta de valor do plano..."
-                class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
               ></textarea>
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">
-                Valor (R$) <span v-if="!form.is_free">*</span><span v-else class="text-emerald-400 lowercase font-medium">(grátis)</span>
+              <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">
+                Valor (R$) <span v-if="!form.is_free">*</span><span v-else class="text-emerald-500 dark:text-emerald-400 lowercase font-medium">(grátis)</span>
               </label>
               <input
                 v-if="!form.is_free"
@@ -310,20 +310,20 @@
                 min="0"
                 required
                 placeholder="99.90"
-                class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition font-mono font-bold"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition font-mono font-bold"
               />
-              <div v-else class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-emerald-500/30 text-emerald-400 text-sm font-bold font-mono">
+              <div v-else class="w-full px-3.5 py-2.5 rounded-xl bg-emerald-50 dark:bg-surface-900 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm font-bold font-mono">
                 R$ 0,00 (Gratuito)
               </div>
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">
+              <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">
                 {{ form.is_free ? 'Periodicidade (Simbólica)' : 'Periodicidade (Asaas) *' }}
               </label>
               <select
                 v-model="form.billing_cycle"
-                class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
               >
                 <option value="MONTHLY">Mensal</option>
                 <option value="QUARTERLY">Trimestral</option>
@@ -333,43 +333,43 @@
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Máx. Profissionais (0 = Ilimitado)</label>
+              <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">Máx. Profissionais (0 = Ilimitado)</label>
               <input
                 v-model.number="form.max_professionals"
                 type="number"
                 min="0"
                 placeholder="0"
-                class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
               />
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Máx. Serviços (0 = Ilimitado)</label>
+              <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">Máx. Serviços (0 = Ilimitado)</label>
               <input
                 v-model.number="form.max_services"
                 type="number"
                 min="0"
                 placeholder="0"
-                class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
               />
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Ordem de Exibição</label>
+              <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">Ordem de Exibição</label>
               <input
                 v-model.number="form.sort_order"
                 type="number"
                 min="0"
                 placeholder="1"
-                class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
               />
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Status de Venda</label>
+              <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">Status de Venda</label>
               <select
                 v-model="form.is_active"
-                class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
               >
                 <option :value="true">Ativo (Visível no Onboarding)</option>
                 <option :value="false">Inativo (Oculto)</option>
@@ -377,24 +377,24 @@
             </div>
 
             <div class="sm:col-span-2">
-              <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">
+              <label class="block text-xs font-bold text-gray-700 dark:text-surface-300 uppercase tracking-wider mb-1.5">
                 Benefícios & Recursos (um por linha)
               </label>
               <textarea
                 v-model="rawFeatures"
                 rows="3"
                 placeholder="Ex:&#10;Agendamento Online 24/7&#10;Lembretes Automáticos&#10;Relatórios Financeiros"
-                class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-surface-950/80 border border-gray-200 dark:border-surface-700/60 text-sm text-[#202224] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-surface-950 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
               ></textarea>
             </div>
           </div>
         </div>
 
         <!-- Modal Footer -->
-        <div class="p-5 sm:p-6 border-t border-surface-800/80 flex items-center justify-end gap-3 bg-surface-950/60 rounded-b-2xl">
+        <div class="p-5 sm:p-6 border-t border-gray-100 dark:border-surface-800/80 flex items-center justify-end gap-3 bg-gray-50/70 dark:bg-surface-950/60 rounded-b-2xl">
           <button
             @click="showModal = false"
-            class="px-4 py-2.5 rounded-xl text-surface-400 hover:text-white hover:bg-surface-800 text-sm font-medium transition"
+            class="px-4 py-2.5 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-surface-400 dark:hover:text-white dark:hover:bg-surface-800 text-sm font-medium transition"
           >
             Cancelar
           </button>
