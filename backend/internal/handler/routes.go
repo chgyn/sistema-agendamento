@@ -40,7 +40,12 @@ func SetupRoutes(cfg RouterConfig) {
 	{
 		// Healthcheck
 		api.GET("/health", func(c *gin.Context) {
-			c.JSON(200, gin.H{"status": "ok", "timestamp": "online"})
+			c.JSON(200, gin.H{
+				"status":    "ok",
+				"timestamp": "online",
+				"version":   "1.0.0",
+				"license":   "MIT",
+			})
 		})
 
 		// -------------------------------------------------------------

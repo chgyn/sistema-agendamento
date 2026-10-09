@@ -104,6 +104,10 @@
           Cadastre seu estabelecimento
         </RouterLink>
       </p>
+
+      <p class="mt-4 text-center text-[11px] text-gray-400">
+        Projeto Open-Source sob <a href="https://github.com/chgyn/sistema-agendamento/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="hover:text-gray-600 underline">Licença MIT</a>
+      </p>
     </div>
   </div>
 </template>

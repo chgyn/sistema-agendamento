@@ -1,7 +1,10 @@
 {
   "name": "sistema-agendamento-frontend",
-  "private": true,
   "version": "1.0.0",
+  "description": "Open-source — Self-hosted native AI agents + WhatsApp (WUZAPI), multi-tenant.",
+  "author": "Charles Egidio",
+  "license": "MIT",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",

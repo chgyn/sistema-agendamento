@@ -219,4 +219,27 @@ func TestRouteAuthorizationAndTenantIsolation(t *testing.T) {
 			t.Errorf("esperado 200 OK para Tenant Admin em /admin/dashboard/analytics, obtido %d, body: %s", w.Code, w.Body.String())
 		}
 	})
+
+	// 7. Healthcheck expõe status online e licença MIT
+	t.Run("Healthcheck expõe status online e licença MIT", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
+		w := httptest.NewRecorder()
+		engine.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("esperado 200 OK em /health, obtido %d", w.Code)
+		}
+
+		var resp map[string]string
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("falha ao parsear json de health: %v", err)
+		}
+
+		if resp["license"] != "MIT" {
+			t.Errorf("esperado licença MIT no healthcheck, obtido: %s", resp["license"])
+		}
+		if resp["status"] != "ok" {
+			t.Errorf("esperado status ok, obtido: %s", resp["status"])
+		}
+	})
 }

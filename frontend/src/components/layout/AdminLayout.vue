@@ -338,8 +338,15 @@
       </header>
 
       <!-- Conteúdo da Rota -->
-      <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <RouterView />
+      <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 flex flex-col justify-between">
+        <div>
+          <RouterView />
+        </div>
+        <!-- Footer Open-Source / Licença MIT -->
+        <footer class="mt-8 pt-4 pb-2 border-t border-gray-100 dark:border-zinc-800/60 text-center text-[11px] text-gray-400 dark:text-zinc-500">
+          Open-Source — Self-hosted native AI agents + WhatsApp (WUZAPI), multi-tenant. Licenciado sob
+          <a href="https://github.com/chgyn/sistema-agendamento/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="hover:text-blue-500 underline ml-0.5">Licença MIT</a>.
+        </footer>
       </main>
     </div>
   </div>

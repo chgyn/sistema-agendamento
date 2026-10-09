@@ -32,8 +32,8 @@ func TestDatabase_ConnectAndApplySeed_SQLiteMemory(t *testing.T) {
 	if err := db.Model(&domain.Plan{}).Count(&planCount).Error; err != nil {
 		t.Fatalf("falha ao contar planos: %v", err)
 	}
-	if planCount != 3 {
-		t.Errorf("esperado 3 planos cadastrados, obteve %d", planCount)
+	if planCount != 4 {
+		t.Errorf("esperado 4 planos cadastrados, obteve %d", planCount)
 	}
 
 	// Verifica se admin inicial foi criado
@@ -52,8 +52,8 @@ func TestDatabase_ConnectAndApplySeed_SQLiteMemory(t *testing.T) {
 
 	var planCount2 int64
 	db.Model(&domain.Plan{}).Count(&planCount2)
-	if planCount2 != 3 {
-		t.Errorf("esperado que contagem de planos se mantivesse em 3, obteve %d", planCount2)
+	if planCount2 != 4 {
+		t.Errorf("esperado que contagem de planos se mantivesse em 4, obteve %d", planCount2)
 	}
 
 	var adminCount2 int64

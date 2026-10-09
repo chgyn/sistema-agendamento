@@ -1,5 +1,8 @@
 # 🏛️ Arquitetura, Concorrência e Catálogo de APIs da Plataforma
 
+> **Open-source — Self-hosted native AI agents + WhatsApp (WUZAPI), multi-tenant.**  
+> *Distribuído sob a [Licença MIT](../LICENSE).*
+
 Documentação técnica unificada sobre a arquitetura Clean Architecture, modelo de isolamento multi-tenant, motor de concorrência com locks pessimistas, mensageria Asynq e catálogo completo de APIs.
 
 ---

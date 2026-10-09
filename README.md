@@ -1,6 +1,26 @@
 # Sistema Multi-Tenant de Agendamento (Barbearias & Salões de Beleza)
 
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/Go-1.24%2B-00ADD8?logo=go" alt="Go Version">
+  <img src="https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs" alt="Vue Version">
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker" alt="Docker Ready">
+  <img src="https://img.shields.io/badge/WhatsApp-WUZAPI-25D366?logo=whatsapp" alt="WhatsApp WUZAPI">
+</p>
+
+> **Open-source — Self-hosted native AI agents + WhatsApp (WUZAPI), multi-tenant.**
+
 Plataforma completa de agendamento de atendimentos desenvolvida com **Go (Gin Gonic + GORM + PostgreSQL + Redis + Asynq)** no backend e **Vue 3 (Vite + Tailwind CSS v4 + Pinia + Lucide Icons)** no frontend, seguindo os princípios de **Clean Architecture**, **Isolamento Rigoroso Multi-Tenant**, **Planos Comerciais** e **Integração Recorrente com Asaas (v3)**.
+
+---
+
+## 🌟 Pilares Principais da Plataforma
+
+* **🌐 Open-Source:** Projeto 100% de código aberto sob a [Licença MIT](LICENSE), viabilizando auditoria integral, colaboração comunitária e total controle sobre sua stack.
+* **🏠 Self-Hosted:** Liberdade absoluta para hospedar em infraestrutura própria (VPS ou Bare Metal) utilizando Docker Compose e Caddy com HTTPS automático, eliminando lock-in em plataformas centralizadas.
+* **🤖 Native AI Agents:** Agentes de Inteligência Artificial nativos (Google Gemini & OpenAI) com *Function Calling* e *Zero Alucinação*, capazes de tirar dúvidas, consultar horários livres e efetivar reservas de forma humanizada.
+* **💬 WhatsApp (WUZAPI):** Integração de WhatsApp multi-sessão via instância privada do WUZAPI, pareamento rápido por QR Code e despachador com simulação orgânica de presença ("digitando...").
+* **🏢 Multi-Tenant:** Arquitetura com separação estrita de dados por organização (`tenant_id`), catálogo flexível de planos comerciais (gratuitos e pagos) e gestão transparente de assinaturas.
 
 ---
 
@@ -179,3 +199,15 @@ npm run build
 - [Módulo de WhatsApp, WUZAPI & Atendimento com IA](docs/MODULO_WHATSAPP_WUZAPI_E_IA.md)
 - [Módulo de Planos & Assinaturas Asaas](docs/MODULO_PLANOS_E_ASSINATURAS_ASAAS.md)
 - [Arquitetura, Concorrência & Catálogo de APIs](docs/ARQUITETURA_E_API.md)
+
+---
+
+## 📄 Licença
+
+Este projeto é software livre e de código aberto distribuído sob os termos da **[Licença MIT](LICENSE)**.
+
+```text
+Copyright (c) 2026 Charles Egidio
+```
+
+Consulte o arquivo [`LICENSE`](LICENSE) para obter o texto integral e as condições de uso, modificação e distribuição.
