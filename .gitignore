@@ -9,4 +9,4 @@ Thumbs.db
 .idea/
 .vscode/
 *.log
-.agents
+.agents/
