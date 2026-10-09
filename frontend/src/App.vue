@@ -11,10 +11,15 @@ import { useAuthStore } from './stores/auth'
 const authStore = useAuthStore()
 
 onMounted(async () => {
-  // Inicialização do tema (Light por padrão do SaaS Figma ou Dark conforme preferência salva)
-  const savedTheme = localStorage.getItem('theme')
-  if (savedTheme === 'dark') {
-    document.documentElement.classList.add('dark')
+  // Inicialização de tema: Páginas públicas são SEMPRE Light Mode
+  const isInternalAdmin = window.location.pathname.startsWith('/admin')
+  if (isInternalAdmin) {
+    const adminTheme = localStorage.getItem('admin_theme') || 'dark'
+    if (adminTheme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
   } else {
     document.documentElement.classList.remove('dark')
   }

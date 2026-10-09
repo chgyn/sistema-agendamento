@@ -370,8 +370,8 @@ onMounted(() => {
     isCollapsed.value = true
   }
 
-  // Carrega tema
-  const savedTheme = localStorage.getItem('theme')
+  // Carrega tema administrativo interno (padrão: Dark Mode)
+  const savedTheme = localStorage.getItem('admin_theme') || 'dark'
   if (savedTheme === 'dark') {
     isDark.value = true
     document.documentElement.classList.add('dark')
@@ -390,10 +390,10 @@ function toggleTheme() {
   isDark.value = !isDark.value
   if (isDark.value) {
     document.documentElement.classList.add('dark')
-    localStorage.setItem('theme', 'dark')
+    localStorage.setItem('admin_theme', 'dark')
   } else {
     document.documentElement.classList.remove('dark')
-    localStorage.setItem('theme', 'light')
+    localStorage.setItem('admin_theme', 'light')
   }
 }
 
@@ -467,6 +467,7 @@ const currentDateFormatted = computed(() => {
 
 function handleLogout() {
   authStore.logout()
+  document.documentElement.classList.remove('dark')
   router.push('/login')
 }
 </script>

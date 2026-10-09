@@ -129,8 +129,22 @@ const router = createRouter({
   ],
 })
 
-// Navigation Guard de Autenticação e Controle de Acesso por Perfil
 router.beforeEach((to, _from, next) => {
+  // Padronização do Tema:
+  // Páginas públicas -> SEMPRE Light Mode (remove .dark)
+  // Dashboard administrativo (/admin) -> Dark Mode padrão (ou preferência salva do admin)
+  const isAdminRoute = to.path.startsWith('/admin') || to.matched.some(record => record.meta.requiresAuth)
+  if (isAdminRoute) {
+    const adminTheme = localStorage.getItem('admin_theme') || 'dark'
+    if (adminTheme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
+
   const authStore = useAuthStore()
 
   if (to.matched.some(record => record.meta.requiresAuth) && !authStore.isAuthenticated) {
