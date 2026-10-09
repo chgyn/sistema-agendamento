@@ -24,17 +24,27 @@ func (s *PlanService) Create(ctx context.Context, dto domain.CreatePlanDTO) (*do
 		isActive = *dto.IsActive
 	}
 
+	price := dto.Price
+	cycle := dto.BillingCycle
+	if dto.IsFree {
+		price = 0.00
+		if cycle == "" {
+			cycle = domain.CycleMonthly
+		}
+	}
+
 	plan := domain.Plan{
 		ID:               uuid.New(),
 		Name:             strings.TrimSpace(dto.Name),
 		Description:      strings.TrimSpace(dto.Description),
-		Price:            dto.Price,
-		BillingCycle:     dto.BillingCycle,
+		Price:            price,
+		BillingCycle:     cycle,
 		MaxProfessionals: dto.MaxProfessionals,
 		MaxServices:      dto.MaxServices,
 		Features:         dto.Features,
 		SortOrder:        dto.SortOrder,
 		IsActive:         isActive,
+		IsFree:           dto.IsFree,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 	}
@@ -52,14 +62,24 @@ func (s *PlanService) Update(ctx context.Context, id uuid.UUID, dto domain.Updat
 		return nil, err
 	}
 
+	price := dto.Price
+	cycle := dto.BillingCycle
+	if dto.IsFree {
+		price = 0.00
+		if cycle == "" {
+			cycle = domain.CycleMonthly
+		}
+	}
+
 	plan.Name = strings.TrimSpace(dto.Name)
 	plan.Description = strings.TrimSpace(dto.Description)
-	plan.Price = dto.Price
-	plan.BillingCycle = dto.BillingCycle
+	plan.Price = price
+	plan.BillingCycle = cycle
 	plan.MaxProfessionals = dto.MaxProfessionals
 	plan.MaxServices = dto.MaxServices
 	plan.Features = dto.Features
 	plan.SortOrder = dto.SortOrder
+	plan.IsFree = dto.IsFree
 	if dto.IsActive != nil {
 		plan.IsActive = *dto.IsActive
 	}

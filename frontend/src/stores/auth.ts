@@ -6,6 +6,8 @@ export type UserRole = 'ADMIN_GLOBAL' | 'ADMIN_TENANT' | 'OPERATOR' | 'ADMIN'
 export type PlanBillingCycle = 'MONTHLY' | 'QUARTERLY' | 'SEMIANNUALLY' | 'YEARLY'
 export type SubscriptionStatus = 'ACTIVE' | 'PENDING' | 'OVERDUE' | 'CANCELLED' | 'EXPIRED' | 'TRIAL'
 
+export type SubscriptionOrigin = 'ASAAS' | 'MANUAL' | 'FREE_PLAN'
+
 export interface Plan {
   id: string
   name: string
@@ -16,6 +18,7 @@ export interface Plan {
   max_services: number
   features?: string
   is_active: boolean
+  is_free?: boolean
   sort_order: number
   created_at?: string
 }
@@ -37,6 +40,22 @@ export interface SubscriptionInvoice {
   created_at?: string
 }
 
+export interface SubscriptionAuditLog {
+  id: string
+  subscription_id: string
+  tenant_id: string
+  plan_id: string
+  action: string
+  previous_status?: SubscriptionStatus
+  new_status: SubscriptionStatus
+  performed_by_id?: string
+  reason: string
+  expires_at?: string
+  created_at: string
+  performed_by?: User
+  plan?: Plan
+}
+
 export interface Subscription {
   id: string
   tenant_id: string
@@ -46,13 +65,18 @@ export interface Subscription {
   status: SubscriptionStatus
   billing_cycle: PlanBillingCycle
   price: number
+  origin?: SubscriptionOrigin
   next_due_date?: string
   current_period_end?: string
   payment_method: string
   payment_url?: string
+  manual_grant_reason?: string
+  granted_by_user_id?: string
+  granted_by_user?: User
   created_at?: string
   plan?: Plan
   invoices?: SubscriptionInvoice[]
+  audit_logs?: SubscriptionAuditLog[]
 }
 
 export interface Tenant {

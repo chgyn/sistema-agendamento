@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -61,6 +62,17 @@ func (h *ServiceHandler) Create(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Dados inválidos: "+err.Error())
 		return
+	}
+
+	// Validação de limite do plano para serviços
+	if sub, err := h.repo.GetSubscriptionByTenantID(c.Request.Context(), tenantID); err == nil && sub != nil && sub.Plan != nil {
+		if sub.Plan.MaxServices > 0 {
+			services, _ := h.repo.ListServices(c.Request.Context(), tenantID, true)
+			if len(services) >= sub.Plan.MaxServices {
+				response.Forbidden(c, fmt.Sprintf("Limite do plano atingido: seu plano atual permite no máximo %d serviço(s). Faça upgrade para adicionar mais serviços.", sub.Plan.MaxServices))
+				return
+			}
+		}
 	}
 
 	isActive := true

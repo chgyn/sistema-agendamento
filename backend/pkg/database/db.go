@@ -97,6 +97,7 @@ func autoMigrate(db *gorm.DB) error {
 		&domain.Plan{},
 		&domain.Subscription{},
 		&domain.SubscriptionInvoice{},
+		&domain.SubscriptionAuditLog{},
 		&domain.TenantWhatsAppConfig{},
 		&domain.WhatsAppConversation{},
 		&domain.WhatsAppMessage{},
@@ -130,10 +131,26 @@ func seedDefaultPlans(db *gorm.DB) error {
 		return nil
 	}
 
+	planGratisID := uuid.New()
 	planBasicoID := uuid.New()
 	planProID := uuid.New()
 	planPremiumID := uuid.New()
 	plans := []domain.Plan{
+		{
+			ID:               planGratisID,
+			Name:             "Plano Gratuito",
+			Description:      "Ideal para quem está começando e quer testar todos os recursos essenciais sem custos.",
+			Price:            0.00,
+			BillingCycle:     domain.CycleMonthly,
+			MaxProfessionals: 1,
+			MaxServices:      5,
+			Features:         `["1 Profissional", "Até 5 Serviços", "Agendamento Online 24/7", "Sem cobranças recorrentes"]`,
+			IsActive:         true,
+			IsFree:           true,
+			SortOrder:        0,
+			CreatedAt:        time.Now(),
+			UpdatedAt:        time.Now(),
+		},
 		{
 			ID:               planBasicoID,
 			Name:             "Plano Starter",
@@ -144,6 +161,7 @@ func seedDefaultPlans(db *gorm.DB) error {
 			MaxServices:      10,
 			Features:         `["1 Profissional", "Até 10 Serviços", "Agendamento Online 24/7", "Lembretes no WhatsApp", "Painel Básico"]`,
 			IsActive:         true,
+			IsFree:           false,
 			SortOrder:        1,
 			CreatedAt:        time.Now(),
 			UpdatedAt:        time.Now(),

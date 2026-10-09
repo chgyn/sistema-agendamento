@@ -14,25 +14,27 @@ import (
 type CreatePlanDTO struct {
 	Name             string           `json:"name" binding:"required,min=3,max=150"`
 	Description      string           `json:"description"`
-	Price            float64          `json:"price" binding:"required,gt=0"`
-	BillingCycle     PlanBillingCycle `json:"billing_cycle" binding:"required,oneof=MONTHLY QUARTERLY SEMIANNUALLY YEARLY"`
+	Price            float64          `json:"price" binding:"gte=0"`
+	BillingCycle     PlanBillingCycle `json:"billing_cycle" binding:"omitempty,oneof=MONTHLY QUARTERLY SEMIANNUALLY YEARLY"`
 	MaxProfessionals int              `json:"max_professionals" binding:"gte=0"`
 	MaxServices      int              `json:"max_services" binding:"gte=0"`
 	Features         string           `json:"features"`
 	SortOrder        int              `json:"sort_order"`
 	IsActive         *bool            `json:"is_active"`
+	IsFree           bool             `json:"is_free"`
 }
 
 type UpdatePlanDTO struct {
 	Name             string           `json:"name" binding:"required,min=3,max=150"`
 	Description      string           `json:"description"`
-	Price            float64          `json:"price" binding:"required,gt=0"`
-	BillingCycle     PlanBillingCycle `json:"billing_cycle" binding:"required,oneof=MONTHLY QUARTERLY SEMIANNUALLY YEARLY"`
+	Price            float64          `json:"price" binding:"gte=0"`
+	BillingCycle     PlanBillingCycle `json:"billing_cycle" binding:"omitempty,oneof=MONTHLY QUARTERLY SEMIANNUALLY YEARLY"`
 	MaxProfessionals int              `json:"max_professionals" binding:"gte=0"`
 	MaxServices      int              `json:"max_services" binding:"gte=0"`
 	Features         string           `json:"features"`
 	SortOrder        int              `json:"sort_order"`
 	IsActive         *bool            `json:"is_active"`
+	IsFree           bool             `json:"is_free"`
 }
 
 type TogglePlanStatusDTO struct {
@@ -54,6 +56,13 @@ type RegisterTenantWithPlanDTO struct {
 
 type OverrideSubscriptionStatusDTO struct {
 	Status SubscriptionStatus `json:"status" binding:"required,oneof=ACTIVE PENDING OVERDUE CANCELLED EXPIRED TRIAL"`
+	Reason string             `json:"reason"`
+}
+
+type GrantManualSubscriptionDTO struct {
+	PlanID    uuid.UUID  `json:"plan_id" binding:"required"`
+	ExpiresAt *time.Time `json:"expires_at"`
+	Reason    string     `json:"reason" binding:"required,min=3,max=500"`
 }
 
 // -------------------------------------------------------------
@@ -79,6 +88,9 @@ type SubscriptionRepository interface {
 	ListAllSubscriptions(ctx context.Context, status string, search string) ([]Subscription, error)
 	SaveSubscriptionInvoice(ctx context.Context, invoice *SubscriptionInvoice) error
 	GetSubscriptionInvoices(ctx context.Context, subscriptionID uuid.UUID) ([]SubscriptionInvoice, error)
+	CreateSubscriptionAuditLog(ctx context.Context, log *SubscriptionAuditLog) error
+	ListSubscriptionAuditLogs(ctx context.Context, subscriptionID uuid.UUID) ([]SubscriptionAuditLog, error)
+	CheckAndExpireSubscriptions(ctx context.Context) (int64, error)
 }
 
 // -------------------------------------------------------------

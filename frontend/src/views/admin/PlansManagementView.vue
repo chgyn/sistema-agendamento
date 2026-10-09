@@ -81,6 +81,8 @@
           <option value="ALL">Todos os status</option>
           <option value="ACTIVE">Apenas Ativos</option>
           <option value="INACTIVE">Apenas Inativos</option>
+          <option value="FREE">Apenas Gratuitos</option>
+          <option value="PAID">Apenas Pagos (Asaas)</option>
         </select>
       </div>
     </div>
@@ -111,15 +113,30 @@
         :class="plan.is_active ? 'hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-950/30 hover:-translate-y-1' : 'opacity-70 border-surface-800'"
       >
         <div class="space-y-4">
-          <!-- Top Row: Nome, Status e Ciclo -->
+          <!-- Top Row: Nome, Status, Tipo (Gratuito/Pago) e Ciclo -->
           <div class="flex items-start justify-between gap-2">
             <div>
-              <span
-                class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border"
-                :class="getCycleBadgeClass(plan.billing_cycle)"
-              >
-                {{ formatCycle(plan.billing_cycle) }}
-              </span>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span
+                  v-if="plan.is_free"
+                  class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-sm"
+                >
+                  Gratuito
+                </span>
+                <span
+                  v-else
+                  class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/10 text-purple-300 border border-purple-500/30"
+                >
+                  Asaas Recorrente
+                </span>
+                <span
+                  v-if="!plan.is_free"
+                  class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border"
+                  :class="getCycleBadgeClass(plan.billing_cycle)"
+                >
+                  {{ formatCycle(plan.billing_cycle) }}
+                </span>
+              </div>
               <h3 class="text-lg font-black text-white font-['Outfit'] mt-2 group-hover:text-purple-300 transition">
                 {{ plan.name }}
               </h3>
@@ -138,7 +155,13 @@
 
           <!-- Preço -->
           <div class="pt-3 border-t border-surface-800/80">
-            <div class="flex items-baseline gap-1">
+            <div v-if="plan.is_free" class="flex items-baseline gap-1.5">
+              <span class="text-2xl font-black text-emerald-400 font-['Outfit'] tracking-tight">
+                Gratuito
+              </span>
+              <span class="text-xs text-surface-400 font-medium">(R$ 0,00)</span>
+            </div>
+            <div v-else class="flex items-baseline gap-1">
               <span class="text-xs text-surface-400 font-semibold">R$</span>
               <span class="text-3xl font-black text-white font-['Outfit'] tracking-tight">
                 {{ plan.price.toFixed(2).replace('.', ',') }}
@@ -237,6 +260,23 @@
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Toggle Plano Gratuito -->
+            <div class="sm:col-span-2 p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between">
+              <div>
+                <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Sparkles class="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Plano de Assinatura Gratuito</span>
+                </span>
+                <span class="text-[11px] text-surface-400 block mt-0.5">
+                  Estabelecimentos cadastrados neste plano têm ativação imediata sem cobranças ou integração no Asaas.
+                </span>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                <input type="checkbox" v-model="form.is_free" @change="onToggleFreePlan" class="sr-only peer" />
+                <div class="w-11 h-6 bg-surface-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-surface-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+              </label>
+            </div>
+
             <div class="sm:col-span-2">
               <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Nome do Plano *</label>
               <input
@@ -259,20 +299,28 @@
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Valor (R$) *</label>
+              <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">
+                Valor (R$) <span v-if="!form.is_free">*</span><span v-else class="text-emerald-400 lowercase font-medium">(grátis)</span>
+              </label>
               <input
+                v-if="!form.is_free"
                 v-model.number="form.price"
                 type="number"
                 step="0.01"
-                min="1"
+                min="0"
                 required
                 placeholder="99.90"
                 class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition font-mono font-bold"
               />
+              <div v-else class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-emerald-500/30 text-emerald-400 text-sm font-bold font-mono">
+                R$ 0,00 (Gratuito)
+              </div>
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">Periodicidade (Asaas) *</label>
+              <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-1.5">
+                {{ form.is_free ? 'Periodicidade (Simbólica)' : 'Periodicidade (Asaas) *' }}
+              </label>
               <select
                 v-model="form.billing_cycle"
                 class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
@@ -368,7 +416,7 @@
 import { ref, computed, onMounted } from 'vue'
 import {
   CreditCard, Plus, Search, CheckCircle2, Loader2,
-  Package, Layers, Check, Pencil, Trash2, X
+  Package, Layers, Check, Pencil, Trash2, X, Sparkles
 } from 'lucide-vue-next'
 import api from '../../services/api'
 import type { Plan, PlanBillingCycle } from '../../stores/auth'
@@ -377,7 +425,7 @@ const plans = ref<Plan[]>([])
 const loading = ref(true)
 const saving = ref(false)
 const searchTerm = ref('')
-const statusFilter = ref<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
+const statusFilter = ref<'ALL' | 'ACTIVE' | 'INACTIVE' | 'FREE' | 'PAID'>('ALL')
 
 const showModal = ref(false)
 const isEditing = ref(false)
@@ -394,6 +442,7 @@ const form = ref<{
   max_services: number
   sort_order: number
   is_active: boolean
+  is_free: boolean
 }>({
   name: '',
   description: '',
@@ -403,7 +452,16 @@ const form = ref<{
   max_services: 0,
   sort_order: 0,
   is_active: true,
+  is_free: false,
 })
+
+function onToggleFreePlan() {
+  if (form.value.is_free) {
+    form.value.price = 0
+  } else if (form.value.price === 0) {
+    form.value.price = 49.90
+  }
+}
 
 const activeCount = computed(() => plans.value.filter(p => p.is_active).length)
 
@@ -417,7 +475,9 @@ const filteredPlans = computed(() => {
     const matchesStatus =
       statusFilter.value === 'ALL' ||
       (statusFilter.value === 'ACTIVE' && p.is_active) ||
-      (statusFilter.value === 'INACTIVE' && !p.is_active)
+      (statusFilter.value === 'INACTIVE' && !p.is_active) ||
+      (statusFilter.value === 'FREE' && p.is_free) ||
+      (statusFilter.value === 'PAID' && !p.is_free)
 
     return matchesSearch && matchesStatus
   })
@@ -492,6 +552,7 @@ function openCreateModal() {
     max_services: 0,
     sort_order: plans.value.length + 1,
     is_active: true,
+    is_free: false,
   }
   showModal.value = true
 }
@@ -511,14 +572,19 @@ function openEditModal(plan: Plan) {
     max_services: plan.max_services,
     sort_order: plan.sort_order,
     is_active: plan.is_active,
+    is_free: Boolean(plan.is_free),
   }
   showModal.value = true
 }
 
 async function savePlan() {
-  if (!form.value.name || form.value.price <= 0) {
-    errorMessage.value = 'Por favor, informe o nome e um valor válido para o plano.'
+  if (!form.value.name || (!form.value.is_free && form.value.price <= 0)) {
+    errorMessage.value = 'Por favor, informe o nome e um valor válido para o plano comercial.'
     return
+  }
+
+  if (form.value.is_free) {
+    form.value.price = 0
   }
 
   saving.value = true

@@ -13,11 +13,12 @@ import (
 )
 
 const (
-	TypeSendBookingConfirmation = "task:send_booking_confirmation"
-	TypeSendBookingReminder     = "task:send_booking_reminder"
-	TypeAutoCancelPending       = "task:auto_cancel_pending"
-	TypeProcessAsaasWebhook     = "task:process_asaas_webhook"
-	TypeProcessWhatsAppIncoming = "task:process_whatsapp_incoming"
+	TypeSendBookingConfirmation       = "task:send_booking_confirmation"
+	TypeSendBookingReminder           = "task:send_booking_reminder"
+	TypeAutoCancelPending             = "task:auto_cancel_pending"
+	TypeProcessAsaasWebhook           = "task:process_asaas_webhook"
+	TypeProcessWhatsAppIncoming       = "task:process_whatsapp_incoming"
+	TypeCheckSubscriptionExpirations = "task:check_subscription_expirations"
 )
 
 type BookingConfirmationPayload struct {
@@ -215,6 +216,41 @@ func HandleProcessWhatsAppIncomingTask(processor WhatsAppProcessor) func(context
 			log.Printf("⚠️ [Worker Asynq] WhatsAppProcessor não injetado no worker")
 		}
 
+		return nil
+	}
+}
+
+type CheckSubscriptionExpirationsPayload struct {
+	ExecutedAt time.Time `json:"executed_at"`
+}
+
+func (q *QueueClient) EnqueueCheckSubscriptionExpirations() error {
+	payload, err := json.Marshal(CheckSubscriptionExpirationsPayload{
+		ExecutedAt: time.Now(),
+	})
+	if err != nil {
+		return err
+	}
+	task := asynq.NewTask(TypeCheckSubscriptionExpirations, payload, asynq.MaxRetry(3), asynq.Timeout(2*time.Minute))
+	_, err = q.client.Enqueue(task)
+	return err
+}
+
+type SubscriptionExpirer interface {
+	CheckAndExpireSubscriptions(ctx context.Context) (int64, error)
+}
+
+func HandleCheckSubscriptionExpirationsTask(expirer SubscriptionExpirer) func(context.Context, *asynq.Task) error {
+	return func(ctx context.Context, t *asynq.Task) error {
+		log.Printf("🔍 [Worker Asynq] Verificando assinaturas com prazo de validade expirado...")
+		if expirer != nil {
+			count, err := expirer.CheckAndExpireSubscriptions(ctx)
+			if err != nil {
+				log.Printf("❌ [Worker Asynq] Falha ao expirar assinaturas vencidas: %v", err)
+				return err
+			}
+			log.Printf("✅ [Worker Asynq] %d assinaturas vencidas foram marcadas como EXPIRED.", count)
+		}
 		return nil
 	}
 }

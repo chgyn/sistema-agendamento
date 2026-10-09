@@ -49,21 +49,34 @@
                 class="p-4 rounded-xl border cursor-pointer transition-all duration-200 relative flex flex-col justify-between"
                 :class="form.plan_id === plan.id ? 'bg-orange-950/40 border-orange-500 shadow-glow-sm ring-1 ring-orange-500' : 'bg-[#14151c]/80 border-zinc-800 hover:border-zinc-700'"
               >
-                <!-- Radio check indicator -->
-                <div class="flex items-start justify-between">
-                  <span class="text-xs font-black text-white font-display">{{ plan.name }}</span>
-                  <div
-                    class="w-4 h-4 rounded-full border flex items-center justify-center transition"
-                    :class="form.plan_id === plan.id ? 'border-orange-400 bg-orange-500' : 'border-zinc-600'"
-                  >
-                    <div v-if="form.plan_id === plan.id" class="w-1.5 h-1.5 rounded-full bg-zinc-950 font-bold"></div>
+                <!-- Radio check indicator & Badge Gratuito -->
+                <div>
+                  <div class="flex items-start justify-between gap-1.5">
+                    <div>
+                      <span v-if="plan.is_free" class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-block mb-1">
+                        Gratuito
+                      </span>
+                      <h4 class="text-xs font-black text-white font-display block">{{ plan.name }}</h4>
+                    </div>
+                    <div
+                      class="w-4 h-4 rounded-full border flex items-center justify-center transition shrink-0 mt-0.5"
+                      :class="form.plan_id === plan.id ? 'border-orange-400 bg-orange-500' : 'border-zinc-600'"
+                    >
+                      <div v-if="form.plan_id === plan.id" class="w-1.5 h-1.5 rounded-full bg-zinc-950 font-bold"></div>
+                    </div>
                   </div>
-                </div>
 
-                <div class="my-2.5">
-                  <span class="text-xs text-zinc-400">R$</span>
-                  <span class="text-2xl font-black text-white ml-0.5 font-display">{{ plan.price.toFixed(2).replace('.', ',') }}</span>
-                  <span class="text-[10px] text-zinc-400 block">/ {{ formatCycle(plan.billing_cycle) }}</span>
+                  <div class="my-2.5">
+                    <template v-if="plan.is_free">
+                      <span class="text-xl font-black text-emerald-400 font-display">100% Grátis</span>
+                      <span class="text-[10px] text-zinc-400 block">Sem mensalidade ou Asaas</span>
+                    </template>
+                    <template v-else>
+                      <span class="text-xs text-zinc-400">R$</span>
+                      <span class="text-2xl font-black text-white ml-0.5 font-display">{{ plan.price.toFixed(2).replace('.', ',') }}</span>
+                      <span class="text-[10px] text-zinc-400 block">/ {{ formatCycle(plan.billing_cycle) }}</span>
+                    </template>
+                  </div>
                 </div>
 
                 <p v-if="plan.description" class="text-[11px] text-zinc-400 leading-tight line-clamp-2">
@@ -292,8 +305,15 @@ async function handleRegister() {
   errorMessage.value = ''
 
   try {
+    const selectedPlan = plans.value.find(p => p.id === form.plan_id)
     await authStore.registerTenant(form)
-    router.push('/admin/minha-assinatura')
+
+    // Se plano gratuito, o estabelecimento já está 100% ativo e vai direto para o dashboard
+    if (selectedPlan?.is_free || authStore.subscription?.status === 'ACTIVE') {
+      router.push('/admin/dashboard')
+    } else {
+      router.push('/admin/minha-assinatura')
+    }
   } catch (err: any) {
     errorMessage.value = err.message || 'Erro ao registrar estabelecimento'
   } finally {

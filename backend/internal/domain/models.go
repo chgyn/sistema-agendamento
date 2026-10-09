@@ -56,6 +56,7 @@ var (
 	ErrPlanHasSubscribers          = errors.New("não é possível excluir um plano com estabelecimentos vinculados")
 	ErrSubscriptionNotFound        = errors.New("assinatura do estabelecimento não encontrada")
 	ErrSubscriptionRequired        = errors.New("assinatura pendente ou inativa. Regularize seu plano para acessar todos os recursos")
+	ErrPlanLimitReached            = errors.New("limite de recursos do plano atingido")
 )
 
 // PlanBillingCycle periodicidade comercial suportada pelo Asaas
@@ -80,6 +81,27 @@ const (
 	SubscriptionStatusTrial     SubscriptionStatus = "TRIAL"
 )
 
+// SubscriptionOrigin identifica o canal de concessão do contrato de assinatura
+type SubscriptionOrigin string
+
+const (
+	SubscriptionOriginAsaas    SubscriptionOrigin = "ASAAS"
+	SubscriptionOriginManual   SubscriptionOrigin = "MANUAL"
+	SubscriptionOriginFreePlan SubscriptionOrigin = "FREE_PLAN"
+)
+
+// SubscriptionAuditAction identifica o tipo de ação registrada na auditoria da assinatura
+type SubscriptionAuditAction string
+
+const (
+	ActionManualGrant      SubscriptionAuditAction = "MANUAL_GRANT"
+	ActionFreeRegistration SubscriptionAuditAction = "FREE_REGISTRATION"
+	ActionStatusOverride   SubscriptionAuditAction = "STATUS_OVERRIDE"
+	ActionPlanChange       SubscriptionAuditAction = "PLAN_CHANGE"
+	ActionAutoExpired      SubscriptionAuditAction = "AUTO_EXPIRED"
+	ActionAsaasSync        SubscriptionAuditAction = "ASAAS_SYNC"
+)
+
 // Plan representa a oferta comercial cadastrada pelo Administrador Geral
 type Plan struct {
 	ID               uuid.UUID        `gorm:"type:uuid;primaryKey" json:"id"`
@@ -91,6 +113,7 @@ type Plan struct {
 	MaxServices      int              `gorm:"default:0" json:"max_services"`      // 0 = ilimitado
 	Features         string           `gorm:"type:text" json:"features"`          // JSON string de benefícios
 	IsActive         bool             `gorm:"default:true;index" json:"is_active"`
+	IsFree           bool             `gorm:"default:false;index" json:"is_free"` // Indica se é plano gratuito (sem cobrança)
 	SortOrder        int              `gorm:"default:0" json:"sort_order"`
 	CreatedAt        time.Time        `json:"created_at"`
 	UpdatedAt        time.Time        `json:"updated_at"`
@@ -98,7 +121,7 @@ type Plan struct {
 	Subscriptions []Subscription `gorm:"foreignKey:PlanID" json:"subscriptions,omitempty"`
 }
 
-// Subscription representa o contrato de assinatura ativo de um Tenant integrado com Asaas
+// Subscription representa o contrato de assinatura ativo de um Tenant integrado com Asaas ou liberado manualmente
 type Subscription struct {
 	ID                  uuid.UUID          `gorm:"type:uuid;primaryKey" json:"id"`
 	TenantID            uuid.UUID          `gorm:"type:uuid;uniqueIndex;not null" json:"tenant_id"`
@@ -108,16 +131,39 @@ type Subscription struct {
 	Status              SubscriptionStatus `gorm:"type:varchar(30);default:'PENDING';index;not null" json:"status"`
 	BillingCycle        PlanBillingCycle   `gorm:"type:varchar(30);not null" json:"billing_cycle"`
 	Price               float64            `gorm:"type:decimal(10,2);not null" json:"price"`
+	Origin              SubscriptionOrigin `gorm:"type:varchar(30);default:'ASAAS';index;not null" json:"origin"` // ASAAS, MANUAL, FREE_PLAN
 	NextDueDate         *time.Time         `gorm:"index" json:"next_due_date,omitempty"`
-	CurrentPeriodEnd    *time.Time         `json:"current_period_end,omitempty"`
+	CurrentPeriodEnd    *time.Time         `gorm:"index" json:"current_period_end,omitempty"`
 	PaymentMethod       string             `gorm:"type:varchar(30);default:'UNDEFINED'" json:"payment_method"`
 	PaymentURL          string             `gorm:"type:text" json:"payment_url,omitempty"`
+	ManualGrantReason   string             `gorm:"type:text" json:"manual_grant_reason,omitempty"`
+	GrantedByUserID     *uuid.UUID         `gorm:"type:uuid;index" json:"granted_by_user_id,omitempty"`
 	CreatedAt           time.Time          `json:"created_at"`
 	UpdatedAt           time.Time          `json:"updated_at"`
 
-	Tenant   *Tenant               `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
-	Plan     *Plan                 `gorm:"foreignKey:PlanID" json:"plan,omitempty"`
-	Invoices []SubscriptionInvoice `gorm:"foreignKey:SubscriptionID" json:"invoices,omitempty"`
+	Tenant        *Tenant                 `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
+	Plan          *Plan                   `gorm:"foreignKey:PlanID" json:"plan,omitempty"`
+	GrantedByUser *User                   `gorm:"foreignKey:GrantedByUserID" json:"granted_by_user,omitempty"`
+	Invoices      []SubscriptionInvoice   `gorm:"foreignKey:SubscriptionID" json:"invoices,omitempty"`
+	AuditLogs     []SubscriptionAuditLog  `gorm:"foreignKey:SubscriptionID" json:"audit_logs,omitempty"`
+}
+
+// SubscriptionAuditLog registra todas as operações manuais e transições de estado para auditoria
+type SubscriptionAuditLog struct {
+	ID             uuid.UUID               `gorm:"type:uuid;primaryKey" json:"id"`
+	SubscriptionID uuid.UUID               `gorm:"type:uuid;index;not null" json:"subscription_id"`
+	TenantID       uuid.UUID               `gorm:"type:uuid;index;not null" json:"tenant_id"`
+	PlanID         uuid.UUID               `gorm:"type:uuid;index;not null" json:"plan_id"`
+	Action         SubscriptionAuditAction `gorm:"type:varchar(50);not null" json:"action"`
+	PreviousStatus SubscriptionStatus      `gorm:"type:varchar(30)" json:"previous_status"`
+	NewStatus      SubscriptionStatus      `gorm:"type:varchar(30);not null" json:"new_status"`
+	PerformedByID  *uuid.UUID              `gorm:"type:uuid;index" json:"performed_by_id,omitempty"`
+	Reason         string                  `gorm:"type:text" json:"reason"`
+	ExpiresAt      *time.Time              `json:"expires_at,omitempty"`
+	CreatedAt      time.Time               `gorm:"index" json:"created_at"`
+
+	PerformedBy *User `gorm:"foreignKey:PerformedByID" json:"performed_by,omitempty"`
+	Plan        *Plan `gorm:"foreignKey:PlanID" json:"plan,omitempty"`
 }
 
 // SubscriptionInvoice histórico de faturas e cobranças geradas no Asaas

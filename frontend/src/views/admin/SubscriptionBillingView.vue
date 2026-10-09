@@ -49,23 +49,41 @@
             <AlertCircle v-else class="w-6 h-6 text-rose-400" />
           </div>
           <div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <h3 class="font-bold text-white text-base font-display">
                 Status da Assinatura: {{ statusLabel }}
               </h3>
               <span class="px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border" :class="statusBadgeClass">
                 {{ subscription.status }}
               </span>
+              <span
+                v-if="subscription.origin === 'MANUAL'"
+                class="px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-purple-500/10 text-purple-300 border border-purple-500/30"
+              >
+                Concessão Manual (Admin)
+              </span>
+              <span
+                v-else-if="subscription.origin === 'FREE_PLAN'"
+                class="px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+              >
+                Plano Gratuito
+              </span>
+              <span
+                v-else
+                class="px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-300 border border-blue-500/30"
+              >
+                Asaas Recorrente
+              </span>
             </div>
-            <p class="text-xs text-zinc-300 mt-0.5">
+            <p class="text-xs text-zinc-300 mt-1">
               {{ statusDescription }}
             </p>
           </div>
         </div>
 
-        <!-- Botão de Ação Imediata (Pagar Fatura) -->
+        <!-- Botão de Ação Imediata (Pagar Fatura) - Apenas se plano Asaas -->
         <a
-          v-if="subscription.payment_url && subscription.status !== 'ACTIVE'"
+          v-if="subscription.payment_url && subscription.status !== 'ACTIVE' && subscription.origin === 'ASAAS'"
           :href="subscription.payment_url"
           target="_blank"
           class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-zinc-950 font-bold text-xs shadow-glow-sm transition shrink-0"
@@ -98,21 +116,23 @@
             <div class="p-3.5 rounded-xl bg-[#14151c] border border-zinc-800">
               <span class="text-zinc-400 block font-semibold">Valor Recorrente</span>
               <span class="text-lg font-black text-white mt-1 block font-display">
-                R$ {{ subscription.price.toFixed(2).replace('.', ',') }}
+                {{ subscription.origin === 'FREE_PLAN' || subscription.price === 0 ? 'Gratuito (R$ 0,00)' : `R$ ${subscription.price.toFixed(2).replace('.', ',')}` }}
               </span>
             </div>
 
             <div class="p-3.5 rounded-xl bg-[#14151c] border border-zinc-800">
               <span class="text-zinc-400 block font-semibold">Periodicidade</span>
               <span class="text-sm font-bold text-white mt-1 block">
-                {{ formatCycle(subscription.billing_cycle) }}
+                {{ subscription.origin === 'FREE_PLAN' ? 'Sem cobrança' : formatCycle(subscription.billing_cycle) }}
               </span>
             </div>
 
             <div class="p-3.5 rounded-xl bg-[#14151c] border border-zinc-800 col-span-2 sm:col-span-1">
-              <span class="text-zinc-400 block font-semibold">Próximo Vencimento</span>
+              <span class="text-zinc-400 block font-semibold">
+                {{ subscription.origin === 'MANUAL' ? 'Validade da Liberação' : 'Próximo Vencimento' }}
+              </span>
               <span class="text-sm font-bold text-orange-400 mt-1 block font-display">
-                {{ formatDate(subscription.next_due_date) }}
+                {{ subscription.current_period_end ? formatDate(subscription.current_period_end) : (subscription.origin === 'FREE_PLAN' ? 'Acesso Contínuo' : formatDate(subscription.next_due_date)) }}
               </span>
             </div>
           </div>
@@ -122,31 +142,61 @@
           </div>
         </div>
 
-        <!-- Card 2: Integração Asaas -->
+        <!-- Card 2: Modalidade / Integração Asaas -->
         <div class="glass-panel border border-zinc-800 rounded-2xl p-6 space-y-3 flex flex-col justify-between">
           <div>
             <div class="flex items-center gap-2 text-zinc-300 pb-3 border-b border-zinc-800">
               <ShieldCheck class="w-4 h-4 text-orange-400" />
-              <h4 class="text-xs font-bold uppercase tracking-wider">Identificador Asaas</h4>
+              <h4 class="text-xs font-bold uppercase tracking-wider">
+                {{ subscription.origin === 'ASAAS' ? 'Identificador Asaas' : 'Modalidade de Acesso' }}
+              </h4>
             </div>
 
             <div class="mt-3 space-y-2.5 text-xs">
-              <div>
-                <span class="text-zinc-400 block font-semibold">ID Assinatura:</span>
-                <span class="font-mono text-[11px] text-zinc-200 truncate block mt-0.5">
-                  {{ subscription.asaas_subscription_id || 'sub_mock_local' }}
-                </span>
-              </div>
-              <div>
-                <span class="text-zinc-400 block font-semibold">ID Cliente:</span>
-                <span class="font-mono text-[11px] text-zinc-200 truncate block mt-0.5">
-                  {{ subscription.asaas_customer_id || 'cus_mock_local' }}
-                </span>
-              </div>
+              <template v-if="subscription.origin === 'MANUAL'">
+                <div>
+                  <span class="text-zinc-400 block font-semibold">Origem do Contrato:</span>
+                  <span class="text-purple-300 font-bold block mt-0.5">Liberado Manualmente pelo Suporte</span>
+                </div>
+                <div v-if="subscription.manual_grant_reason">
+                  <span class="text-zinc-400 block font-semibold">Justificativa:</span>
+                  <span class="text-zinc-200 text-xs block mt-0.5">{{ subscription.manual_grant_reason }}</span>
+                </div>
+                <div>
+                  <span class="text-zinc-400 block font-semibold">Status de Cobrança:</span>
+                  <span class="text-emerald-400 font-bold block mt-0.5">Isento de faturas automáticas</span>
+                </div>
+              </template>
+
+              <template v-else-if="subscription.origin === 'FREE_PLAN'">
+                <div>
+                  <span class="text-zinc-400 block font-semibold">Origem do Contrato:</span>
+                  <span class="text-emerald-400 font-bold block mt-0.5">Plano Gratuito da Plataforma</span>
+                </div>
+                <div>
+                  <span class="text-zinc-400 block font-semibold">Status de Cobrança:</span>
+                  <span class="text-zinc-300 block mt-0.5">100% gratuito, sem gateway de pagamento</span>
+                </div>
+              </template>
+
+              <template v-else>
+                <div>
+                  <span class="text-zinc-400 block font-semibold">ID Assinatura:</span>
+                  <span class="font-mono text-[11px] text-zinc-200 truncate block mt-0.5">
+                    {{ subscription.asaas_subscription_id || 'sub_mock_local' }}
+                  </span>
+                </div>
+                <div>
+                  <span class="text-zinc-400 block font-semibold">ID Cliente:</span>
+                  <span class="font-mono text-[11px] text-zinc-200 truncate block mt-0.5">
+                    {{ subscription.asaas_customer_id || 'cus_mock_local' }}
+                  </span>
+                </div>
+              </template>
             </div>
           </div>
 
-          <div v-if="subscription.payment_url" class="pt-2">
+          <div v-if="subscription.origin === 'ASAAS' && subscription.payment_url" class="pt-2">
             <a
               :href="subscription.payment_url"
               target="_blank"
@@ -258,6 +308,12 @@ const statusLabel = computed(() => {
 })
 
 const statusDescription = computed(() => {
+  if (subscription.value?.origin === 'MANUAL') {
+    return 'Assinatura concedida manualmente pela administração da plataforma. Recursos liberados sem cobranças recorrentes.'
+  }
+  if (subscription.value?.origin === 'FREE_PLAN') {
+    return 'Plano gratuito ativo. Você possui acesso aos recursos inclusos sem necessidade de mensalidade ou gateway de pagamento.'
+  }
   switch (subscription.value?.status) {
     case 'ACTIVE':
       return 'Todos os recursos de agendamento, agenda e profissionais estão disponíveis normalmente.'

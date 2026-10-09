@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sistema-agendamento/backend/internal/domain"
@@ -41,6 +42,18 @@ func RequireActiveSubscription(repo *postgres.Repository) gin.HandlerFunc {
 
 		// Libera acesso se o status for ACTIVE ou TRIAL
 		if sub.Status == domain.SubscriptionStatusActive || sub.Status == domain.SubscriptionStatusTrial {
+			// Valida se o período de validade da assinatura manual/promocional expirou
+			if sub.CurrentPeriodEnd != nil && time.Now().After(*sub.CurrentPeriodEnd) {
+				_ = repo.UpdateSubscriptionStatus(c.Request.Context(), sub.ID, domain.SubscriptionStatusExpired)
+				c.JSON(http.StatusForbidden, gin.H{
+					"success":             false,
+					"error":               "O período de validade da sua assinatura expirou. Entre em contato com a administração para renovação.",
+					"code":                "SUBSCRIPTION_EXPIRED",
+					"subscription_status": domain.SubscriptionStatusExpired,
+				})
+				c.Abort()
+				return
+			}
 			c.Next()
 			return
 		}

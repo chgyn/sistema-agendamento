@@ -34,6 +34,7 @@ func (r *Repository) GetTenantByID(ctx context.Context, id uuid.UUID) (*domain.T
 	if err := r.db.WithContext(ctx).
 		Preload("Subscription").
 		Preload("Subscription.Plan").
+		Preload("Subscription.GrantedByUser").
 		Preload("Subscription.Invoices", func(db *gorm.DB) *gorm.DB {
 			return db.Order("due_date desc")
 		}).
@@ -781,6 +782,10 @@ func (r *Repository) GetSubscriptionByID(ctx context.Context, id uuid.UUID) (*do
 	if err := r.db.WithContext(ctx).
 		Preload("Tenant").
 		Preload("Plan").
+		Preload("GrantedByUser").
+		Preload("AuditLogs", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("PerformedBy").Preload("Plan").Order("created_at desc")
+		}).
 		Preload("Invoices", func(db *gorm.DB) *gorm.DB {
 			return db.Order("created_at desc")
 		}).
@@ -798,6 +803,10 @@ func (r *Repository) GetSubscriptionByTenantID(ctx context.Context, tenantID uui
 	if err := r.db.WithContext(ctx).
 		Preload("Tenant").
 		Preload("Plan").
+		Preload("GrantedByUser").
+		Preload("AuditLogs", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("PerformedBy").Preload("Plan").Order("created_at desc")
+		}).
 		Preload("Invoices", func(db *gorm.DB) *gorm.DB {
 			return db.Order("created_at desc")
 		}).
@@ -843,7 +852,10 @@ func (r *Repository) UpdateSubscriptionStatus(ctx context.Context, subID uuid.UU
 
 func (r *Repository) ListAllSubscriptions(ctx context.Context, status string, search string) ([]domain.Subscription, error) {
 	var subs []domain.Subscription
-	query := r.db.WithContext(ctx).Preload("Tenant").Preload("Plan")
+	query := r.db.WithContext(ctx).
+		Preload("Tenant").
+		Preload("Plan").
+		Preload("GrantedByUser")
 
 	if status != "" && status != "ALL" {
 		query = query.Where("status = ?", status)
@@ -879,5 +891,64 @@ func (r *Repository) GetSubscriptionInvoices(ctx context.Context, subscriptionID
 		Order("due_date desc").
 		Find(&invoices).Error
 	return invoices, err
+}
+
+func (r *Repository) CreateSubscriptionAuditLog(ctx context.Context, log *domain.SubscriptionAuditLog) error {
+	return r.db.WithContext(ctx).Create(log).Error
+}
+
+func (r *Repository) ListSubscriptionAuditLogs(ctx context.Context, subscriptionID uuid.UUID) ([]domain.SubscriptionAuditLog, error) {
+	var logs []domain.SubscriptionAuditLog
+	err := r.db.WithContext(ctx).
+		Preload("PerformedBy").
+		Preload("Plan").
+		Where("subscription_id = ?", subscriptionID).
+		Order("created_at desc").
+		Find(&logs).Error
+	return logs, err
+}
+
+func (r *Repository) CheckAndExpireSubscriptions(ctx context.Context) (int64, error) {
+	now := time.Now()
+	var subs []domain.Subscription
+	err := r.db.WithContext(ctx).
+		Where("status = ? AND current_period_end IS NOT NULL AND current_period_end < ?", domain.SubscriptionStatusActive, now).
+		Find(&subs).Error
+	if err != nil {
+		return 0, err
+	}
+
+	var expiredCount int64
+	for _, sub := range subs {
+		tx := r.db.WithContext(ctx).Begin()
+		if err := tx.Model(&domain.Subscription{}).Where("id = ?", sub.ID).Updates(map[string]interface{}{
+			"status":     domain.SubscriptionStatusExpired,
+			"updated_at": now,
+		}).Error; err != nil {
+			tx.Rollback()
+			continue
+		}
+
+		auditLog := domain.SubscriptionAuditLog{
+			ID:             uuid.New(),
+			SubscriptionID: sub.ID,
+			TenantID:       sub.TenantID,
+			PlanID:         sub.PlanID,
+			Action:         domain.ActionAutoExpired,
+			PreviousStatus: domain.SubscriptionStatusActive,
+			NewStatus:      domain.SubscriptionStatusExpired,
+			Reason:         "Período de validade da assinatura expirado automaticamente pelo sistema",
+			CreatedAt:      now,
+		}
+		if err := tx.Create(&auditLog).Error; err != nil {
+			tx.Rollback()
+			continue
+		}
+
+		if err := tx.Commit().Error; err == nil {
+			expiredCount++
+		}
+	}
+	return expiredCount, nil
 }
 

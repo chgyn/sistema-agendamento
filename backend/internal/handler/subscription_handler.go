@@ -68,10 +68,70 @@ func (h *SubscriptionHandler) OverrideStatus(c *gin.Context) {
 		return
 	}
 
-	if err := h.subService.OverrideStatus(c.Request.Context(), id, dto.Status); err != nil {
+	var adminUserID *uuid.UUID
+	if uid, ok := middleware.GetUserID(c); ok {
+		adminUserID = &uid
+	}
+
+	reason := dto.Reason
+	if reason == "" {
+		reason = "Alteração manual de status pelo Administrador Geral"
+	}
+
+	if err := h.subService.OverrideStatus(c.Request.Context(), id, dto.Status, reason, adminUserID); err != nil {
 		response.InternalServerError(c, "Falha ao alterar status da assinatura: "+err.Error())
 		return
 	}
 
 	response.Success(c, gin.H{"status": dto.Status}, "Status da assinatura atualizado com sucesso!")
+}
+
+// GrantManual permite ao Administrador Geral liberar ou alterar a assinatura de um tenant manualmente
+func (h *SubscriptionHandler) GrantManual(c *gin.Context) {
+	tenantID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "ID do estabelecimento inválido")
+		return
+	}
+
+	var dto domain.GrantManualSubscriptionDTO
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		response.BadRequest(c, "Dados inválidos: "+err.Error())
+		return
+	}
+
+	adminUserID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.Unauthorized(c, "Administrador não identificado")
+		return
+	}
+
+	sub, err := h.subService.GrantManualSubscription(c.Request.Context(), tenantID, dto, adminUserID)
+	if err != nil {
+		if errors.Is(err, domain.ErrTenantNotFound) || errors.Is(err, domain.ErrPlanNotFound) {
+			response.NotFound(c, err.Error())
+			return
+		}
+		response.InternalServerError(c, "Falha ao liberar assinatura manual: "+err.Error())
+		return
+	}
+
+	response.Success(c, sub, "Assinatura liberada manualmente com sucesso!")
+}
+
+// ListAuditLogs retorna o histórico de eventos de auditoria da assinatura
+func (h *SubscriptionHandler) ListAuditLogs(c *gin.Context) {
+	subID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "ID da assinatura inválido")
+		return
+	}
+
+	logs, err := h.subService.ListAuditLogs(c.Request.Context(), subID)
+	if err != nil {
+		response.InternalServerError(c, "Falha ao buscar histórico de auditoria: "+err.Error())
+		return
+	}
+
+	response.Success(c, logs)
 }

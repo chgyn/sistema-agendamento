@@ -47,6 +47,7 @@ func setupTestDB(t *testing.T) (*gorm.DB, *postgres.Repository) {
 		&domain.Plan{},
 		&domain.Subscription{},
 		&domain.SubscriptionInvoice{},
+		&domain.SubscriptionAuditLog{},
 	)
 	if err != nil {
 		t.Fatalf("falha ao migrar banco de teste: %v", err)

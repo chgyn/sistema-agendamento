@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -63,6 +64,17 @@ func (h *ProfessionalHandler) Create(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Dados inválidos: "+err.Error())
 		return
+	}
+
+	// Validação de limite do plano para profissionais
+	if sub, err := h.repo.GetSubscriptionByTenantID(c.Request.Context(), tenantID); err == nil && sub != nil && sub.Plan != nil {
+		if sub.Plan.MaxProfessionals > 0 {
+			pros, _ := h.repo.ListProfessionals(c.Request.Context(), tenantID, true)
+			if len(pros) >= sub.Plan.MaxProfessionals {
+				response.Forbidden(c, fmt.Sprintf("Limite do plano atingido: seu plano atual permite no máximo %d profissional(is). Faça upgrade para adicionar mais profissionais.", sub.Plan.MaxProfessionals))
+				return
+			}
+		}
 	}
 
 	isActive := true

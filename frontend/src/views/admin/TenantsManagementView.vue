@@ -159,7 +159,7 @@
               <!-- Plano & Assinatura -->
               <td class="py-4 px-5">
                 <div v-if="t.subscription" class="space-y-1">
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 flex-wrap">
                     <span class="font-bold text-white text-xs">
                       {{ t.subscription.plan?.name || 'Plano Personalizado' }}
                     </span>
@@ -170,11 +170,42 @@
                       <span class="w-1.5 h-1.5 rounded-full" :class="getSubscriptionDotClass(t.subscription.status)"></span>
                       <span>{{ formatSubStatus(t.subscription.status) }}</span>
                     </span>
+
+                    <!-- Origin Badge -->
+                    <span
+                      v-if="t.subscription.origin === 'MANUAL'"
+                      class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/30 inline-flex items-center gap-1"
+                      title="Liberado manualmente pelo administrador"
+                    >
+                      <Key class="w-2.5 h-2.5" />
+                      <span>Manual</span>
+                    </span>
+                    <span
+                      v-else-if="t.subscription.origin === 'FREE_PLAN' || t.subscription.plan?.is_free"
+                      class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 inline-flex items-center gap-1"
+                      title="Plano Gratuito"
+                    >
+                      <Gift class="w-2.5 h-2.5" />
+                      <span>Grátis</span>
+                    </span>
+                    <span
+                      v-else
+                      class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/30 inline-flex items-center gap-1"
+                      title="Gateway Asaas"
+                    >
+                      <span>Asaas</span>
+                    </span>
                   </div>
-                  <div class="text-[11px] text-surface-400 flex items-center gap-1.5 font-medium">
-                    <span class="font-mono text-surface-300">R$ {{ t.subscription.price.toFixed(2).replace('.', ',') }}</span>
+
+                  <div class="text-[11px] text-surface-400 flex items-center gap-1.5 font-medium flex-wrap">
+                    <span v-if="t.subscription.origin === 'FREE_PLAN' || t.subscription.plan?.is_free" class="text-cyan-400 font-bold">100% Gratuito</span>
+                    <span v-else class="font-mono text-surface-300">R$ {{ t.subscription.price.toFixed(2).replace('.', ',') }}</span>
                     <span>•</span>
                     <span>{{ formatCycle(t.subscription.billing_cycle) }}</span>
+                    <template v-if="t.subscription.current_period_end">
+                      <span>•</span>
+                      <span class="text-amber-400/90 font-medium">Expira: {{ formatDate(t.subscription.current_period_end) }}</span>
+                    </template>
                   </div>
                 </div>
                 <div v-else class="text-xs text-surface-500 italic">
@@ -258,7 +289,7 @@
       v-if="showSubscriptionModal && selectedTenant"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-950/80 backdrop-blur-md overflow-y-auto"
     >
-      <div class="glass-card-elevated w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl my-8">
+      <div class="glass-card-elevated w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl my-8">
         <!-- Modal Header -->
         <div class="flex items-center justify-between p-5 sm:p-6 border-b border-surface-800/80">
           <div class="flex items-center gap-3">
@@ -270,7 +301,7 @@
                 <h3 class="font-bold text-white text-base font-['Outfit']">{{ selectedTenant.name }}</h3>
                 <span class="text-xs text-purple-400 font-mono">/{{ selectedTenant.slug }}</span>
               </div>
-              <p class="text-xs text-surface-400">Detalhamento contratual, financeiro e faturas Asaas</p>
+              <p class="text-xs text-surface-400">Detalhamento contratual, liberação manual e auditoria</p>
             </div>
           </div>
           <button @click="showSubscriptionModal = false" class="p-1.5 rounded-lg text-surface-400 hover:text-white hover:bg-surface-800 transition">
@@ -278,229 +309,576 @@
           </button>
         </div>
 
+        <!-- Modal Subnavigation Tabs -->
+        <div class="flex items-center gap-1 sm:gap-2 px-5 sm:px-6 pt-3 border-b border-surface-800/80 bg-surface-950/40 overflow-x-auto">
+          <button
+            @click="activeSubTab = 'details'"
+            class="pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 shrink-0"
+            :class="activeSubTab === 'details' ? 'border-purple-500 text-purple-400' : 'border-transparent text-surface-400 hover:text-surface-200'"
+          >
+            <CreditCard class="w-4 h-4" />
+            <span>Visão Geral & Faturas</span>
+          </button>
+
+          <button
+            @click="activeSubTab = 'manual_grant'"
+            class="pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 shrink-0"
+            :class="activeSubTab === 'manual_grant' ? 'border-purple-500 text-purple-400' : 'border-transparent text-surface-400 hover:text-surface-200'"
+          >
+            <Key class="w-4 h-4" />
+            <span>Liberação Manual</span>
+          </button>
+
+          <button
+            @click="activeSubTab = 'audit_logs'"
+            class="pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 shrink-0"
+            :class="activeSubTab === 'audit_logs' ? 'border-purple-500 text-purple-400' : 'border-transparent text-surface-400 hover:text-surface-200'"
+          >
+            <History class="w-4 h-4" />
+            <span>Trilha de Auditoria</span>
+            <span v-if="auditLogs.length > 0" class="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-500/20 text-purple-300 font-mono">
+              {{ auditLogs.length }}
+            </span>
+          </button>
+        </div>
+
         <!-- Modal Body -->
-        <div class="p-6 overflow-y-auto space-y-6">
+        <div class="p-6 overflow-y-auto space-y-6 flex-1">
           <div v-if="loadingSubscriptionDetails" class="py-12 text-center">
             <Loader2 class="w-8 h-8 text-purple-400 animate-spin mx-auto mb-3" />
             <p class="text-xs text-surface-400">Carregando dados da assinatura...</p>
           </div>
 
-          <div v-else-if="!selectedSubscription" class="bg-surface-950/60 border border-surface-800 rounded-2xl p-8 text-center space-y-2">
-            <AlertTriangle class="w-8 h-8 text-amber-400 mx-auto" />
-            <p class="text-sm font-bold text-white">Nenhuma assinatura vinculada a este estabelecimento</p>
-            <p class="text-xs text-surface-400">Este estabelecimento não possui registro de assinatura recorrente no momento.</p>
-          </div>
+          <!-- TAB 1: VISÃO GERAL & DETALHES -->
+          <div v-else-if="activeSubTab === 'details'" class="space-y-6">
+            <div v-if="!selectedSubscription" class="bg-surface-950/60 border border-surface-800 rounded-2xl p-8 text-center space-y-4">
+              <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mx-auto">
+                <AlertTriangle class="w-6 h-6" />
+              </div>
+              <div>
+                <p class="text-sm font-bold text-white">Nenhuma assinatura vinculada a este estabelecimento</p>
+                <p class="text-xs text-surface-400 mt-1 max-w-md mx-auto">
+                  Este estabelecimento não possui assinatura ativa no momento. Você pode liberar uma assinatura manualmente agora mesmo sem cobrança no Asaas.
+                </p>
+              </div>
+              <button
+                @click="activeSubTab = 'manual_grant'"
+                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-900/30 transition"
+              >
+                <Key class="w-4 h-4" />
+                <span>Liberar Assinatura Manualmente</span>
+              </button>
+            </div>
 
-          <div v-else class="space-y-6">
-            <!-- Banner de Status da Assinatura -->
-            <div
-              class="p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md"
-              :class="getStatusBannerClass(selectedSubscription.status)"
-            >
-              <div class="flex items-center gap-3.5">
-                <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" :class="getStatusIconBoxClass(selectedSubscription.status)">
-                  <CheckCircle2 v-if="selectedSubscription.status === 'ACTIVE'" class="w-5 h-5 text-emerald-400" />
-                  <Clock v-else-if="selectedSubscription.status === 'PENDING'" class="w-5 h-5 text-amber-400 animate-pulse" />
-                  <AlertCircle v-else class="w-5 h-5 text-rose-400" />
+            <div v-else class="space-y-6">
+              <!-- Banner de Status da Assinatura -->
+              <div
+                class="p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md"
+                :class="getStatusBannerClass(selectedSubscription.status)"
+              >
+                <div class="flex items-center gap-3.5">
+                  <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" :class="getStatusIconBoxClass(selectedSubscription.status)">
+                    <CheckCircle2 v-if="selectedSubscription.status === 'ACTIVE'" class="w-5 h-5 text-emerald-400" />
+                    <Clock v-else-if="selectedSubscription.status === 'PENDING'" class="w-5 h-5 text-amber-400 animate-pulse" />
+                    <AlertCircle v-else class="w-5 h-5 text-rose-400" />
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-xs font-bold text-white">Status da Assinatura:</span>
+                      <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border" :class="getSubscriptionBadgeClass(selectedSubscription.status)">
+                        {{ formatSubStatus(selectedSubscription.status) }}
+                      </span>
+                      <!-- Modalidade / Origem -->
+                      <span
+                        v-if="selectedSubscription.origin === 'MANUAL'"
+                        class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/30 inline-flex items-center gap-1"
+                      >
+                        <Key class="w-2.5 h-2.5" />
+                        <span>Manual</span>
+                      </span>
+                      <span
+                        v-else-if="selectedSubscription.origin === 'FREE_PLAN' || selectedSubscription.plan?.is_free"
+                        class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 inline-flex items-center gap-1"
+                      >
+                        <Gift class="w-2.5 h-2.5" />
+                        <span>Plano Gratuito</span>
+                      </span>
+                      <span
+                        v-else
+                        class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/30 inline-flex items-center gap-1"
+                      >
+                        <span>Asaas</span>
+                      </span>
+                    </div>
+                    <p class="text-xs text-surface-300 mt-0.5">
+                      {{ getStatusExplanation(selectedSubscription.status) }}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold text-white">Status da Assinatura:</span>
-                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border" :class="getSubscriptionBadgeClass(selectedSubscription.status)">
-                      {{ formatSubStatus(selectedSubscription.status) }}
+
+                <!-- Ação de Abrir Checkout/Fatura no Asaas (apenas se origem Asaas) -->
+                <a
+                  v-if="selectedSubscription.origin === 'ASAAS' && selectedSubscription.payment_url"
+                  :href="selectedSubscription.payment_url"
+                  target="_blank"
+                  class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-surface-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition shrink-0"
+                >
+                  <ExternalLink class="w-3.5 h-3.5" />
+                  <span>Abrir Fatura Asaas</span>
+                </a>
+              </div>
+
+              <!-- Grid de Informações Contratuais -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Card 1: Detalhes do Plano -->
+                <div class="bg-surface-950/80 border border-surface-800/80 rounded-2xl p-4 space-y-3">
+                  <div class="flex items-center justify-between pb-2.5 border-b border-surface-800">
+                    <div class="flex items-center gap-2">
+                      <Sparkles class="w-4 h-4 text-purple-400" />
+                      <h4 class="text-xs font-bold uppercase tracking-wider text-purple-300">Plano Contratado</h4>
+                    </div>
+                    <span class="px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 text-[10px] font-bold">
+                      {{ selectedSubscription.plan?.name || 'Personalizado' }}
                     </span>
                   </div>
-                  <p class="text-xs text-surface-300 mt-0.5">
-                    {{ getStatusExplanation(selectedSubscription.status) }}
+
+                  <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span class="text-surface-400 block text-[11px]">Valor Recorrente:</span>
+                      <span v-if="selectedSubscription.origin === 'FREE_PLAN' || selectedSubscription.plan?.is_free" class="text-sm font-black text-cyan-400 font-mono">
+                        R$ 0,00 (Grátis)
+                      </span>
+                      <span v-else class="text-sm font-black text-white font-mono">
+                        R$ {{ selectedSubscription.price.toFixed(2).replace('.', ',') }}
+                      </span>
+                    </div>
+                    <div>
+                      <span class="text-surface-400 block text-[11px]">Periodicidade:</span>
+                      <span class="text-sm font-bold text-white">
+                        {{ formatCycle(selectedSubscription.billing_cycle) }}
+                      </span>
+                    </div>
+                    <div>
+                      <span class="text-surface-400 block text-[11px]">Data de Início:</span>
+                      <span class="text-xs font-medium text-surface-200">
+                        {{ formatDate(selectedSubscription.created_at) }}
+                      </span>
+                    </div>
+                    <div>
+                      <span class="text-surface-400 block text-[11px]">
+                        {{ selectedSubscription.origin === 'MANUAL' ? 'Validade / Expiração:' : 'Próxima Cobrança:' }}
+                      </span>
+                      <span v-if="selectedSubscription.current_period_end" class="text-xs font-bold text-amber-400">
+                        {{ formatDate(selectedSubscription.current_period_end) }}
+                      </span>
+                      <span v-else-if="selectedSubscription.next_due_date" class="text-xs font-bold text-emerald-400">
+                        {{ formatDate(selectedSubscription.next_due_date) }}
+                      </span>
+                      <span v-else class="text-xs text-surface-400">
+                        Acesso contínuo / Vitalício
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card 2: Modalidade & Origem da Assinatura -->
+                <div class="bg-surface-950/80 border border-surface-800/80 rounded-2xl p-4 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div class="flex items-center gap-2 pb-2.5 border-b border-surface-800">
+                      <ShieldCheck class="w-4 h-4 text-indigo-400" />
+                      <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-300">Modalidade & Origem</h4>
+                    </div>
+
+                    <!-- CASO 1: CONCESSÃO MANUAL -->
+                    <div v-if="selectedSubscription.origin === 'MANUAL'" class="mt-3 space-y-2 text-xs">
+                      <div>
+                        <span class="text-surface-400 block text-[11px]">Concedido por:</span>
+                        <span class="font-medium text-white flex items-center gap-1.5 mt-0.5">
+                          <User class="w-3.5 h-3.5 text-purple-400" />
+                          <span>{{ selectedSubscription.granted_by_user?.name || 'Administrador Global' }}</span>
+                        </span>
+                      </div>
+                      <div>
+                        <span class="text-surface-400 block text-[11px]">Motivo / Justificativa:</span>
+                        <p class="text-xs text-purple-200 italic mt-0.5 bg-surface-900/60 p-2 rounded-lg border border-purple-500/10">
+                          "{{ selectedSubscription.manual_grant_reason || 'Concessão direta sem cobrança pelo administrador.' }}"
+                        </p>
+                      </div>
+                    </div>
+
+                    <!-- CASO 2: PLANO GRATUITO -->
+                    <div v-else-if="selectedSubscription.origin === 'FREE_PLAN' || selectedSubscription.plan?.is_free" class="mt-3 space-y-2 text-xs">
+                      <div class="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 space-y-1">
+                        <div class="font-bold flex items-center gap-1.5">
+                          <Gift class="w-3.5 h-3.5" />
+                          <span>Plano Gratuito Nativo</span>
+                        </div>
+                        <p class="text-[11px] text-surface-300">
+                          Estabelecimento cadastrado diretamente no plano grátis. Não requer integração nem faturas do gateway Asaas.
+                        </p>
+                      </div>
+                    </div>
+
+                    <!-- CASO 3: GATEWAY ASAAS -->
+                    <div v-else class="mt-3 space-y-2 text-xs">
+                      <div>
+                        <span class="text-surface-400 block text-[11px]">Asaas Subscription ID:</span>
+                        <span class="font-mono text-xs text-indigo-200 select-all">
+                          {{ selectedSubscription.asaas_subscription_id || 'Não integrado' }}
+                        </span>
+                      </div>
+                      <div>
+                        <span class="text-surface-400 block text-[11px]">Asaas Customer ID:</span>
+                        <span class="font-mono text-xs text-indigo-200 select-all">
+                          {{ selectedSubscription.asaas_customer_id || 'Não integrado' }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="text-[11px] text-surface-400 flex items-center justify-between pt-2 border-t border-surface-800/60">
+                    <span>Tipo de Acesso:</span>
+                    <span class="font-bold text-white uppercase">{{ formatOrigin(selectedSubscription.origin) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Histórico de Faturas e Cobranças Sincronizadas (Apenas Asaas) -->
+              <div v-if="selectedSubscription.origin === 'ASAAS'" class="bg-surface-950/90 border border-surface-800/80 rounded-2xl overflow-hidden shadow">
+                <div class="p-4 border-b border-surface-800 flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <FileText class="w-4 h-4 text-emerald-400" />
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-surface-200">Histórico de Cobranças & Faturas Asaas</h4>
+                  </div>
+                  <span class="text-[11px] text-surface-500">Sincronizado via Webhook</span>
+                </div>
+
+                <div v-if="!selectedSubscription.invoices || selectedSubscription.invoices.length === 0" class="p-6 text-center text-xs text-surface-400">
+                  Nenhuma fatura registrada no histórico até o momento.
+                </div>
+
+                <div v-else class="overflow-x-auto max-h-48">
+                  <table class="w-full text-left text-xs">
+                    <thead class="bg-surface-900 border-b border-surface-800 text-[11px] text-surface-400 uppercase font-semibold sticky top-0">
+                      <tr>
+                        <th class="py-2.5 px-3.5">Fatura</th>
+                        <th class="py-2.5 px-3.5">Vencimento</th>
+                        <th class="py-2.5 px-3.5">Valor</th>
+                        <th class="py-2.5 px-3.5">Método</th>
+                        <th class="py-2.5 px-3.5">Status</th>
+                        <th class="py-2.5 px-3.5 text-right">Comprovante</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-surface-800/60">
+                      <tr v-for="inv in selectedSubscription.invoices" :key="inv.id" class="hover:bg-surface-800/40 transition">
+                        <td class="py-2.5 px-3.5 font-mono text-surface-300">
+                          {{ inv.asaas_payment_id }}
+                        </td>
+                        <td class="py-2.5 px-3.5 text-surface-300">
+                          {{ formatDate(inv.due_date) }}
+                        </td>
+                        <td class="py-2.5 px-3.5 font-bold text-white font-mono">
+                          R$ {{ inv.value.toFixed(2).replace('.', ',') }}
+                        </td>
+                        <td class="py-2.5 px-3.5 text-surface-400 uppercase">
+                          {{ inv.billing_type || 'PIX' }}
+                        </td>
+                        <td class="py-2.5 px-3.5">
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border" :class="getInvoiceBadgeClass(inv.status)">
+                            {{ inv.status }}
+                          </span>
+                        </td>
+                        <td class="py-2.5 px-3.5 text-right">
+                          <a
+                            v-if="inv.invoice_url"
+                            :href="inv.invoice_url"
+                            target="_blank"
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-800 hover:bg-surface-700 text-surface-300 hover:text-white transition font-medium"
+                          >
+                            <ExternalLink class="w-3 h-3" />
+                            <span>Abrir</span>
+                          </a>
+                          <span v-else class="text-surface-500">-</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Ajuste Manual de Status (Exclusivo Admin Geral) -->
+              <div class="p-4 rounded-2xl bg-purple-500/5 border border-purple-500/20 space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <SlidersHorizontal class="w-4 h-4 text-purple-400" />
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-purple-300">Ajuste Manual de Status</h4>
+                  </div>
+                  <span class="text-[10px] text-surface-400">Grava evento na auditoria</span>
+                </div>
+
+                <div class="space-y-3">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-[11px] text-surface-400 font-medium mb-1">Novo Status:</label>
+                      <select
+                        v-model="overrideStatusForm"
+                        class="w-full py-2 px-3 rounded-xl bg-surface-950/80 border border-surface-700/60 text-xs text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
+                      >
+                        <option value="ACTIVE">ACTIVE (Liberado / Ativo 🟢)</option>
+                        <option value="PENDING">PENDING (Aguardando Pagamento 🟡)</option>
+                        <option value="OVERDUE">OVERDUE (Inadimplente / Bloqueado 🔴)</option>
+                        <option value="CANCELLED">CANCELLED (Cancelado ⚫)</option>
+                        <option value="TRIAL">TRIAL (Período de Testes 🚀)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="block text-[11px] text-surface-400 font-medium mb-1">Motivo / Justificativa:</label>
+                      <input
+                        v-model="overrideReasonForm"
+                        type="text"
+                        placeholder="Ex: Regularização off-line de fatura"
+                        class="w-full py-2 px-3 rounded-xl bg-surface-950/80 border border-surface-700/60 text-xs text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="flex justify-end">
+                    <button
+                      @click="applyStatusOverride"
+                      :disabled="updatingStatus || overrideStatusForm === selectedSubscription.status"
+                      class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition disabled:opacity-50 shadow-md"
+                    >
+                      <Loader2 v-if="updatingStatus" class="w-3.5 h-3.5 animate-spin" />
+                      <span>Salvar Alteração de Status</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 2: LIBERAÇÃO MANUAL DE ASSINATURA -->
+          <div v-else-if="activeSubTab === 'manual_grant'" class="space-y-6">
+            <div class="p-4 rounded-2xl bg-gradient-to-r from-purple-900/30 via-indigo-900/20 to-purple-900/30 border border-purple-500/30 flex items-start gap-3.5">
+              <div class="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300 shrink-0 mt-0.5">
+                <Key class="w-5 h-5" />
+              </div>
+              <div class="space-y-1">
+                <h4 class="text-sm font-bold text-white font-['Outfit']">Liberação Manual de Assinatura</h4>
+                <p class="text-xs text-surface-300 leading-relaxed">
+                  Conceda ou altere a assinatura deste estabelecimento diretamente, sem a necessidade de gateway de pagamento Asaas. O status será imediatamente ativado e o evento registrado na auditoria com o autor da concessão.
+                </p>
+              </div>
+            </div>
+
+            <!-- Feedback de Erro ou Sucesso -->
+            <div v-if="manualGrantError" class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle class="w-4 h-4 shrink-0" />
+              <span>{{ manualGrantError }}</span>
+            </div>
+
+            <div v-if="manualGrantSuccess" class="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+              <Check class="w-4 h-4 shrink-0" />
+              <span>{{ manualGrantSuccess }}</span>
+            </div>
+
+            <form @submit.prevent="submitManualGrant" class="space-y-5">
+              <!-- Campo 1: Selecionar Plano -->
+              <div>
+                <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-2">
+                  1. Selecione o Plano a Associar *
+                </label>
+                <select
+                  v-model="manualGrantForm.plan_id"
+                  required
+                  class="w-full py-2.5 px-3.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+                >
+                  <option value="" disabled>Escolha um plano...</option>
+                  <option v-for="plan in availablePlans" :key="plan.id" :value="plan.id">
+                    {{ plan.name }} — {{ plan.is_free ? '100% Gratuito' : 'R$ ' + plan.price.toFixed(2).replace('.', ',') }}
+                    (Até {{ plan.max_professionals }} prof., {{ plan.max_services }} serv.)
+                  </option>
+                </select>
+              </div>
+
+              <!-- Campo 2: Período de Validade -->
+              <div class="space-y-3">
+                <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider">
+                  2. Período de Validade da Assinatura
+                </label>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label
+                    class="p-3.5 rounded-xl border cursor-pointer transition flex items-center gap-3"
+                    :class="!manualGrantForm.has_expiration ? 'bg-purple-500/10 border-purple-500/40 text-white' : 'bg-surface-950/60 border-surface-800 text-surface-400 hover:border-surface-700'"
+                  >
+                    <input
+                      type="radio"
+                      :value="false"
+                      v-model="manualGrantForm.has_expiration"
+                      class="text-purple-600 focus:ring-purple-500"
+                    />
+                    <div>
+                      <p class="text-xs font-bold">Sem Expiração</p>
+                      <p class="text-[11px] text-surface-400">Acesso contínuo / vitalício</p>
+                    </div>
+                  </label>
+
+                  <label
+                    class="p-3.5 rounded-xl border cursor-pointer transition flex items-center gap-3"
+                    :class="manualGrantForm.has_expiration ? 'bg-purple-500/10 border-purple-500/40 text-white' : 'bg-surface-950/60 border-surface-800 text-surface-400 hover:border-surface-700'"
+                  >
+                    <input
+                      type="radio"
+                      :value="true"
+                      v-model="manualGrantForm.has_expiration"
+                      class="text-purple-600 focus:ring-purple-500"
+                    />
+                    <div>
+                      <p class="text-xs font-bold">Definir Validade</p>
+                      <p class="text-[11px] text-surface-400">Expira na data limite escolhida</p>
+                    </div>
+                  </label>
+                </div>
+
+                <!-- Input de Data quando Definir Validade está selecionado -->
+                <div v-if="manualGrantForm.has_expiration" class="p-3 rounded-xl bg-surface-950/80 border border-surface-800 space-y-1.5">
+                  <label class="block text-[11px] font-bold text-purple-300 uppercase tracking-wider">
+                    Data Limite de Validade *
+                  </label>
+                  <div class="relative">
+                    <Calendar class="w-4 h-4 text-surface-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="date"
+                      v-model="manualGrantForm.expires_at"
+                      :min="minExpirationDate"
+                      required
+                      class="w-full pl-9 pr-3 py-2 rounded-lg bg-surface-900 border border-surface-700/60 text-xs text-white focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                  <p class="text-[10px] text-surface-400">
+                    Após as 23:59 desta data, a assinatura será automaticamente marcada como expirada.
                   </p>
                 </div>
               </div>
 
-              <!-- Ação de Abrir Checkout/Fatura no Asaas -->
-              <a
-                v-if="selectedSubscription.payment_url"
-                :href="selectedSubscription.payment_url"
-                target="_blank"
-                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-surface-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition shrink-0"
+              <!-- Campo 3: Justificativa / Motivo -->
+              <div>
+                <label class="block text-xs font-bold text-surface-300 uppercase tracking-wider mb-2">
+                  3. Justificativa / Motivo da Concessão * (Obrigatório para Auditoria)
+                </label>
+                <textarea
+                  v-model="manualGrantForm.reason"
+                  rows="3"
+                  required
+                  placeholder="Ex: Parceria comercial estratégica, concessão de cortesia para novos franqueados, teste VIP ou acordo comercial off-line..."
+                  class="w-full p-3 rounded-xl bg-surface-950/80 border border-surface-700/60 text-xs text-white placeholder-surface-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition resize-none"
+                ></textarea>
+                <p class="text-[10px] text-surface-400 mt-1">Mínimo de 3 caracteres. Ficará registrado na trilha de auditoria do sistema.</p>
+              </div>
+
+              <!-- Botões de Ação do Formulário -->
+              <div class="flex items-center justify-end gap-3 pt-3 border-t border-surface-800">
+                <button
+                  type="button"
+                  @click="activeSubTab = 'details'"
+                  class="px-4 py-2.5 rounded-xl text-surface-400 hover:text-white hover:bg-surface-800 text-xs font-medium transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  :disabled="grantingManual"
+                  class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-purple-900/30 transition disabled:opacity-50"
+                >
+                  <Loader2 v-if="grantingManual" class="w-4 h-4 animate-spin" />
+                  <Key v-else class="w-4 h-4" />
+                  <span>Confirmar e Liberar Assinatura</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- TAB 3: TRILHA DE AUDITORIA -->
+          <div v-else-if="activeSubTab === 'audit_logs'" class="space-y-4">
+            <div class="flex items-center justify-between pb-2 border-b border-surface-800">
+              <div class="flex items-center gap-2">
+                <History class="w-4 h-4 text-purple-400" />
+                <h4 class="text-xs font-bold uppercase tracking-wider text-surface-200">Trilha de Auditoria & Alterações</h4>
+              </div>
+              <button
+                v-if="selectedSubscription?.id"
+                @click="fetchAuditLogs(selectedSubscription.id)"
+                :disabled="loadingAuditLogs"
+                title="Atualizar histórico"
+                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-900 hover:bg-surface-800 text-surface-300 hover:text-white text-xs transition"
               >
-                <ExternalLink class="w-3.5 h-3.5" />
-                <span>Abrir Fatura Asaas</span>
-              </a>
+                <RefreshCw class="w-3 h-3" :class="{ 'animate-spin': loadingAuditLogs }" />
+                <span>Atualizar</span>
+              </button>
             </div>
 
-            <!-- Grid de Informações Contratuais -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <!-- Card 1: Detalhes do Plano -->
-              <div class="bg-surface-950/80 border border-surface-800/80 rounded-2xl p-4 space-y-3">
-                <div class="flex items-center justify-between pb-2.5 border-b border-surface-800">
+            <div v-if="loadingAuditLogs" class="py-12 text-center">
+              <Loader2 class="w-7 h-7 text-purple-400 animate-spin mx-auto mb-2" />
+              <p class="text-xs text-surface-400">Carregando eventos de auditoria...</p>
+            </div>
+
+            <div v-else-if="auditLogs.length === 0" class="p-8 text-center bg-surface-950/60 rounded-2xl border border-surface-800 text-surface-400 space-y-2">
+              <History class="w-7 h-7 text-surface-500 mx-auto" />
+              <p class="text-xs font-medium">Nenhum evento registrado nesta assinatura até o momento.</p>
+            </div>
+
+            <div v-else class="space-y-3">
+              <div
+                v-for="log in auditLogs"
+                :key="log.id"
+                class="p-4 rounded-xl bg-surface-950/80 border border-surface-800/80 space-y-2 hover:border-surface-700 transition"
+              >
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                   <div class="flex items-center gap-2">
-                    <Sparkles class="w-4 h-4 text-purple-400" />
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-purple-300">Plano Contratado</h4>
+                    <span
+                      class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border"
+                      :class="getAuditActionInfo(log.action).class"
+                    >
+                      {{ getAuditActionInfo(log.action).label }}
+                    </span>
+                    <span v-if="log.plan" class="text-xs text-purple-300 font-semibold">
+                      • Plano: {{ log.plan.name }}
+                    </span>
                   </div>
-                  <span class="px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 text-[10px] font-bold">
-                    {{ selectedSubscription.plan?.name || 'Personalizado' }}
+                  <span class="text-[11px] text-surface-400 font-mono">
+                    {{ formatDateTime(log.created_at) }}
                   </span>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span class="text-surface-400 block text-[11px]">Valor Recorrente:</span>
-                    <span class="text-sm font-black text-white font-mono">
-                      R$ {{ selectedSubscription.price.toFixed(2).replace('.', ',') }}
-                    </span>
+                <p v-if="log.reason" class="text-xs text-surface-200 bg-surface-900/60 p-2.5 rounded-lg border border-surface-800">
+                  <span class="text-surface-400 font-bold">Justificativa: </span>
+                  {{ log.reason }}
+                </p>
+
+                <div class="flex items-center justify-between text-[11px] text-surface-400 pt-1 border-t border-surface-800/60">
+                  <div class="flex items-center gap-1.5">
+                    <User class="w-3 h-3 text-surface-400" />
+                    <span>Realizado por: </span>
+                    <span class="text-surface-200 font-medium">{{ log.performed_by?.name || 'Sistema Automático' }}</span>
                   </div>
-                  <div>
-                    <span class="text-surface-400 block text-[11px]">Periodicidade:</span>
-                    <span class="text-sm font-bold text-white">
-                      {{ formatCycle(selectedSubscription.billing_cycle) }}
-                    </span>
-                  </div>
-                  <div>
-                    <span class="text-surface-400 block text-[11px]">Data de Início:</span>
-                    <span class="text-xs font-medium text-surface-200">
-                      {{ formatDate(selectedSubscription.created_at) }}
-                    </span>
-                  </div>
-                  <div>
-                    <span class="text-surface-400 block text-[11px]">Próxima Cobrança:</span>
-                    <span class="text-xs font-bold text-emerald-400">
-                      {{ formatDate(selectedSubscription.next_due_date) }}
-                    </span>
+                  <div v-if="log.previous_status || log.new_status" class="font-mono text-[10px]">
+                    <span :class="log.previous_status ? 'text-surface-400' : 'text-surface-500'">{{ log.previous_status || '-' }}</span>
+                    <span class="mx-1 text-purple-400">➔</span>
+                    <span class="text-emerald-400 font-bold">{{ log.new_status }}</span>
                   </div>
                 </div>
-              </div>
-
-              <!-- Card 2: Integração com Asaas -->
-              <div class="bg-surface-950/80 border border-surface-800/80 rounded-2xl p-4 space-y-3 flex flex-col justify-between">
-                <div>
-                  <div class="flex items-center gap-2 pb-2.5 border-b border-surface-800">
-                    <ShieldCheck class="w-4 h-4 text-indigo-400" />
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-300">Identificadores Asaas</h4>
-                  </div>
-
-                  <div class="mt-3 space-y-2 text-xs">
-                    <div>
-                      <span class="text-surface-400 block text-[11px]">Asaas Subscription ID:</span>
-                      <span class="font-mono text-xs text-indigo-200 select-all">
-                        {{ selectedSubscription.asaas_subscription_id || 'Não integrado' }}
-                      </span>
-                    </div>
-                    <div>
-                      <span class="text-surface-400 block text-[11px]">Asaas Customer ID:</span>
-                      <span class="font-mono text-xs text-indigo-200 select-all">
-                        {{ selectedSubscription.asaas_customer_id || 'Não integrado' }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="text-[11px] text-surface-400 flex items-center gap-1.5 pt-2 border-t border-surface-800/60">
-                  <span>Forma de Pagamento:</span>
-                  <span class="font-bold text-white uppercase">{{ selectedSubscription.payment_method || 'PIX / Cartão' }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Histórico de Faturas e Cobranças Sincronizadas -->
-            <div class="bg-surface-950/90 border border-surface-800/80 rounded-2xl overflow-hidden shadow">
-              <div class="p-4 border-b border-surface-800 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <FileText class="w-4 h-4 text-emerald-400" />
-                  <h4 class="text-xs font-bold uppercase tracking-wider text-surface-200">Histórico de Cobranças & Faturas</h4>
-                </div>
-                <span class="text-[11px] text-surface-500">Sincronizado via Webhook</span>
-              </div>
-
-              <div v-if="!selectedSubscription.invoices || selectedSubscription.invoices.length === 0" class="p-6 text-center text-xs text-surface-400">
-                Nenhuma fatura registrada no histórico até o momento.
-              </div>
-
-              <div v-else class="overflow-x-auto max-h-48">
-                <table class="w-full text-left text-xs">
-                  <thead class="bg-surface-900 border-b border-surface-800 text-[11px] text-surface-400 uppercase font-semibold sticky top-0">
-                    <tr>
-                      <th class="py-2.5 px-3.5">Fatura</th>
-                      <th class="py-2.5 px-3.5">Vencimento</th>
-                      <th class="py-2.5 px-3.5">Valor</th>
-                      <th class="py-2.5 px-3.5">Método</th>
-                      <th class="py-2.5 px-3.5">Status</th>
-                      <th class="py-2.5 px-3.5 text-right">Comprovante</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-surface-800/60">
-                    <tr v-for="inv in selectedSubscription.invoices" :key="inv.id" class="hover:bg-surface-800/40 transition">
-                      <td class="py-2.5 px-3.5 font-mono text-surface-300">
-                        {{ inv.asaas_payment_id }}
-                      </td>
-                      <td class="py-2.5 px-3.5 text-surface-300">
-                        {{ formatDate(inv.due_date) }}
-                      </td>
-                      <td class="py-2.5 px-3.5 font-bold text-white font-mono">
-                        R$ {{ inv.value.toFixed(2).replace('.', ',') }}
-                      </td>
-                      <td class="py-2.5 px-3.5 text-surface-400 uppercase">
-                        {{ inv.billing_type || 'PIX' }}
-                      </td>
-                      <td class="py-2.5 px-3.5">
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border" :class="getInvoiceBadgeClass(inv.status)">
-                          {{ inv.status }}
-                        </span>
-                      </td>
-                      <td class="py-2.5 px-3.5 text-right">
-                        <a
-                          v-if="inv.invoice_url"
-                          :href="inv.invoice_url"
-                          target="_blank"
-                          class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-800 hover:bg-surface-700 text-surface-300 hover:text-white transition font-medium"
-                        >
-                          <ExternalLink class="w-3 h-3" />
-                          <span>Abrir</span>
-                        </a>
-                        <span v-else class="text-surface-500">-</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Ajuste Manual de Status (Exclusivo Admin Geral) -->
-            <div class="p-4 rounded-2xl bg-purple-500/5 border border-purple-500/20 space-y-3">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <SlidersHorizontal class="w-4 h-4 text-purple-400" />
-                  <h4 class="text-xs font-bold uppercase tracking-wider text-purple-300">Ajuste Manual de Status (Admin Geral)</h4>
-                </div>
-                <span class="text-[10px] text-surface-400">Controle direto de liberação de acesso</span>
-              </div>
-
-              <div class="flex flex-col sm:flex-row items-center gap-3">
-                <select
-                  v-model="overrideStatusForm"
-                  class="w-full sm:w-64 py-2.5 px-3.5 rounded-xl bg-surface-950/80 border border-surface-700/60 text-xs text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
-                >
-                  <option value="ACTIVE">ACTIVE (Liberado / Ativo 🟢)</option>
-                  <option value="PENDING">PENDING (Aguardando Pagamento 🟡)</option>
-                  <option value="OVERDUE">OVERDUE (Inadimplente / Bloqueado 🔴)</option>
-                  <option value="CANCELLED">CANCELLED (Cancelado ⚫)</option>
-                  <option value="TRIAL">TRIAL (Período de Testes 🚀)</option>
-                </select>
-
-                <button
-                  @click="applyStatusOverride"
-                  :disabled="updatingStatus || overrideStatusForm === selectedSubscription.status"
-                  class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition disabled:opacity-50 shadow-md"
-                >
-                  <Loader2 v-if="updatingStatus" class="w-3.5 h-3.5 animate-spin" />
-                  <span>Salvar Alteração de Status</span>
-                </button>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Modal Footer -->
-        <div class="p-5 sm:p-6 border-t border-surface-800/80 flex items-center justify-end bg-surface-950/60 rounded-b-2xl">
+        <div class="p-5 sm:p-6 border-t border-surface-800/80 flex items-center justify-between bg-surface-950/60 rounded-b-2xl">
+          <div class="text-xs text-surface-400">
+            <span v-if="selectedSubscription">Origem: <strong class="text-white">{{ formatOrigin(selectedSubscription.origin) }}</strong></span>
+          </div>
           <button
             @click="showSubscriptionModal = false"
             class="px-5 py-2.5 rounded-xl text-surface-400 hover:text-white hover:bg-surface-800 text-sm font-medium transition"
@@ -780,10 +1158,14 @@ import { ref, computed, onMounted } from 'vue'
 import {
   Building2, Plus, Search, CheckCircle2, Loader2,
   ExternalLink, Pencil, Power, X, ShieldCheck, CreditCard,
-  Clock, AlertTriangle, AlertCircle, Sparkles, FileText, SlidersHorizontal
+  Clock, AlertTriangle, AlertCircle, Sparkles, FileText, SlidersHorizontal,
+  Key, Gift, History, Calendar, Check, RefreshCw, User
 } from 'lucide-vue-next'
 import api from '../../services/api'
-import type { Tenant, Subscription, SubscriptionStatus, PlanBillingCycle } from '../../stores/auth'
+import type {
+  Tenant, Subscription, SubscriptionStatus, PlanBillingCycle,
+  Plan, SubscriptionAuditLog
+} from '../../stores/auth'
 
 const tenants = ref<Tenant[]>([])
 const loading = ref(true)
@@ -804,6 +1186,29 @@ const selectedSubscription = ref<Subscription | null>(null)
 const loadingSubscriptionDetails = ref(false)
 const updatingStatus = ref(false)
 const overrideStatusForm = ref<SubscriptionStatus>('ACTIVE')
+const overrideReasonForm = ref('')
+
+// Tabs e Liberação Manual na Modal de Assinatura
+const activeSubTab = ref<'details' | 'manual_grant' | 'audit_logs'>('details')
+const availablePlans = ref<Plan[]>([])
+const loadingPlans = ref(false)
+const auditLogs = ref<SubscriptionAuditLog[]>([])
+const loadingAuditLogs = ref(false)
+const grantingManual = ref(false)
+const manualGrantError = ref('')
+const manualGrantSuccess = ref('')
+const manualGrantForm = ref({
+  plan_id: '',
+  has_expiration: false,
+  expires_at: '',
+  reason: '',
+})
+
+const minExpirationDate = computed(() => {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  return tomorrow.toISOString().split('T')[0]
+})
 
 const createForm = ref({
   name: '',
@@ -989,6 +1394,53 @@ function getInvoiceBadgeClass(status: string) {
   }
 }
 
+function formatDateTime(dateStr?: string) {
+  if (!dateStr) return '-'
+  try {
+    return new Date(dateStr).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+function formatOrigin(origin?: string) {
+  switch (origin) {
+    case 'MANUAL':
+      return 'Concessão Manual (Sem Asaas)'
+    case 'FREE_PLAN':
+      return 'Plano 100% Gratuito'
+    case 'ASAAS':
+      return 'Gateway Asaas'
+    default:
+      return origin || 'Asaas'
+  }
+}
+
+function getAuditActionInfo(action: string) {
+  switch (action) {
+    case 'MANUAL_GRANT':
+      return { label: 'Concessão Manual', class: 'bg-purple-500/10 text-purple-400 border-purple-500/30' }
+    case 'FREE_REGISTRATION':
+      return { label: 'Cadastro Gratuito', class: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' }
+    case 'STATUS_OVERRIDE':
+      return { label: 'Alteração de Status', class: 'bg-amber-500/10 text-amber-400 border-amber-500/30' }
+    case 'PLAN_CHANGE':
+      return { label: 'Mudança de Plano', class: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' }
+    case 'AUTO_EXPIRED':
+      return { label: 'Expiração Automática', class: 'bg-rose-500/10 text-rose-400 border-rose-500/30' }
+    case 'ASAAS_SYNC':
+      return { label: 'Sincronização Asaas', class: 'bg-blue-500/10 text-blue-400 border-blue-500/30' }
+    default:
+      return { label: action, class: 'bg-surface-800 text-surface-400 border-surface-700' }
+  }
+}
+
 function autoGenerateSlug() {
   if (!createForm.value.name) return
   createForm.value.slug = createForm.value.name
@@ -1013,11 +1465,57 @@ async function fetchTenants() {
   }
 }
 
+async function fetchAvailablePlans() {
+  loadingPlans.value = true
+  try {
+    const res = await api.get('/admin/plans?is_active=true')
+    if (res.data.success) {
+      availablePlans.value = res.data.data
+    }
+  } catch (err: any) {
+    console.error('Erro ao carregar planos disponíveis:', err)
+  } finally {
+    loadingPlans.value = false
+  }
+}
+
+async function fetchAuditLogs(subscriptionId: string) {
+  loadingAuditLogs.value = true
+  try {
+    const res = await api.get(`/admin/subscriptions/${subscriptionId}/audit-logs`)
+    if (res.data.success) {
+      auditLogs.value = res.data.data
+    }
+  } catch (err: any) {
+    console.error('Erro ao carregar histórico de auditoria:', err)
+    auditLogs.value = []
+  } finally {
+    loadingAuditLogs.value = false
+  }
+}
+
 async function openSubscriptionModal(tenant: Tenant) {
   selectedTenant.value = tenant
   selectedSubscription.value = tenant.subscription || null
   overrideStatusForm.value = tenant.subscription?.status || 'ACTIVE'
+  overrideReasonForm.value = ''
+  manualGrantError.value = ''
+  manualGrantSuccess.value = ''
+  activeSubTab.value = tenant.subscription ? 'details' : 'manual_grant'
   showSubscriptionModal.value = true
+
+  if (availablePlans.value.length === 0) {
+    await fetchAvailablePlans()
+  }
+
+  manualGrantForm.value = {
+    plan_id: tenant.subscription?.plan_id || (availablePlans.value[0]?.id || ''),
+    has_expiration: !!tenant.subscription?.current_period_end,
+    expires_at: tenant.subscription?.current_period_end
+      ? tenant.subscription.current_period_end.split('T')[0]
+      : '',
+    reason: '',
+  }
 
   loadingSubscriptionDetails.value = true
   try {
@@ -1029,11 +1527,77 @@ async function openSubscriptionModal(tenant: Tenant) {
       if (idx !== -1) {
         tenants.value[idx].subscription = res.data.data.subscription
       }
+      if (!manualGrantForm.value.plan_id) {
+        manualGrantForm.value.plan_id = res.data.data.subscription.plan_id
+      }
     }
   } catch (err: any) {
     console.error('Erro ao carregar detalhes completos da assinatura:', err)
   } finally {
     loadingSubscriptionDetails.value = false
+  }
+
+  if (selectedSubscription.value?.id) {
+    await fetchAuditLogs(selectedSubscription.value.id)
+  } else {
+    auditLogs.value = []
+  }
+}
+
+async function submitManualGrant() {
+  if (!selectedTenant.value) return
+  if (!manualGrantForm.value.plan_id) {
+    manualGrantError.value = 'Por favor, selecione um plano para associar.'
+    return
+  }
+  if (!manualGrantForm.value.reason || manualGrantForm.value.reason.trim().length < 3) {
+    manualGrantError.value = 'Por favor, informe a justificativa da concessão (mínimo de 3 caracteres).'
+    return
+  }
+  if (manualGrantForm.value.has_expiration && !manualGrantForm.value.expires_at) {
+    manualGrantError.value = 'Por favor, informe a data limite de validade da assinatura.'
+    return
+  }
+
+  grantingManual.value = true
+  manualGrantError.value = ''
+  manualGrantSuccess.value = ''
+
+  try {
+    let expiresAtISO: string | null = null
+    if (manualGrantForm.value.has_expiration && manualGrantForm.value.expires_at) {
+      expiresAtISO = new Date(manualGrantForm.value.expires_at + 'T23:59:59').toISOString()
+    }
+
+    const payload: any = {
+      plan_id: manualGrantForm.value.plan_id,
+      reason: manualGrantForm.value.reason.trim(),
+    }
+    if (expiresAtISO) {
+      payload.expires_at = expiresAtISO
+    }
+
+    const res = await api.post(`/admin/tenants/${selectedTenant.value.id}/subscriptions/grant-manual`, payload)
+    if (res.data.success) {
+      manualGrantSuccess.value = 'Assinatura concedida com sucesso!'
+      selectedSubscription.value = res.data.data
+      overrideStatusForm.value = res.data.data.status
+      if (selectedTenant.value) {
+        selectedTenant.value.subscription = res.data.data
+      }
+      await fetchTenants()
+      if (res.data.data.id) {
+        await fetchAuditLogs(res.data.data.id)
+      }
+      setTimeout(() => {
+        activeSubTab.value = 'details'
+        manualGrantSuccess.value = ''
+      }, 1200)
+    }
+  } catch (err: any) {
+    manualGrantError.value = err.response?.data?.error || err.message || 'Falha ao conceder assinatura manual.'
+  } finally {
+    grantingManual.value = false
   }
 }
 
@@ -1049,13 +1613,18 @@ async function applyStatusOverride() {
   try {
     const res = await api.patch(`/admin/subscriptions/${selectedSubscription.value.id}/status`, {
       status: newStatus,
+      reason: overrideReasonForm.value.trim() || undefined,
     })
     if (res.data.success) {
       selectedSubscription.value.status = newStatus
       if (selectedTenant.value?.subscription) {
         selectedTenant.value.subscription.status = newStatus
       }
+      overrideReasonForm.value = ''
       await fetchTenants()
+      if (selectedSubscription.value.id) {
+        await fetchAuditLogs(selectedSubscription.value.id)
+      }
     }
   } catch (err: any) {
     alert(err.response?.data?.error || 'Erro ao alterar status da assinatura.')
@@ -1146,5 +1715,6 @@ async function toggleStatus(tenant: Tenant) {
 
 onMounted(() => {
   fetchTenants()
+  fetchAvailablePlans()
 })
 </script>

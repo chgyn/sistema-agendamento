@@ -100,6 +100,7 @@ func SetupRoutes(cfg RouterConfig) {
 				globalOnly.GET("/tenants/:id", cfg.TenantHandler.GetTenantByID)
 				globalOnly.PUT("/tenants/:id", cfg.TenantHandler.UpdateTenantGlobal)
 				globalOnly.PATCH("/tenants/:id/status", cfg.TenantHandler.ToggleTenantStatus)
+				globalOnly.POST("/tenants/:id/subscriptions/grant-manual", cfg.SubscriptionHandler.GrantManual)
 
 				// Gestão de Administradores Gerais
 				globalOnly.GET("/global-admins", cfg.UserHandler.ListGlobalAdmins)
@@ -116,6 +117,7 @@ func SetupRoutes(cfg RouterConfig) {
 				// Gestão Global de Assinaturas
 				globalOnly.GET("/subscriptions", cfg.SubscriptionHandler.ListGlobal)
 				globalOnly.PATCH("/subscriptions/:id/status", cfg.SubscriptionHandler.OverrideStatus)
+				globalOnly.GET("/subscriptions/:id/audit-logs", cfg.SubscriptionHandler.ListAuditLogs)
 			}
 
 			// ==========================================
