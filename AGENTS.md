@@ -1,0 +1,1 @@
+/home/charles/Documentos/Dev-Brain/projetos/sistema-agendamento/AGENTS.md
