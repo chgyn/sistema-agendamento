@@ -132,3 +132,13 @@ Para garantir que dois agendamentos não sejam confirmados no mesmo horário e p
 - `POST /api/v1/admin/integrations/google-calendar/disconnect` -> Desconecta a conta Google mantendo as credenciais BYOK.
 - `GET /api/v1/admin/integrations/google-calendar/failures` -> Lista falhas de sincronização de agendamentos do tenant.
 - `POST /api/v1/admin/integrations/google-calendar/syncs/:appointment_id/retry` -> Reenfileira manualmente a sincronização de um agendamento.
+
+---
+
+## 6. 📖 Módulos Específicos & Decisões Arquiteturais
+
+Para detalhes aprofundados sobre subsistemas dedicados, consulte:
+- [📅 Módulo de Integração Google Calendar (OAuth 2.0 Multi-Tenant BYOK)](MODULO_GOOGLE_CALENDAR.md)
+- [🤖 Módulo de Integração WUZAPI, WhatsApp Multi-Tenant & Atendimento com IA](MODULO_WHATSAPP_WUZAPI_E_IA.md)
+- [💳 Módulo de Planos de Assinatura, Integração Asaas & Gestão de Estabelecimentos](MODULO_PLANOS_E_ASSINATURAS_ASAAS.md)
+
