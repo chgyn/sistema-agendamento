@@ -51,6 +51,7 @@ Plataforma completa de agendamento de atendimentos desenvolvida com **Go (Gin Go
    - Cada estabelecimento configura seu próprio **Google OAuth Client ID e Client Secret** (cifrado com **AES-256-GCM**), sem compartilhamento de credenciais entre tenants.
    - Fluxo OAuth seguro com `state` assinado por HMAC-SHA256 e nonce de uso único no Redis (`GetDel`).
    - Sincronização assíncrona e idempotente via **Asynq + Redis** (`task:sync_google_calendar`) para criação, reagendamento e remoção (`DELETE`) no cancelamento (tanto pelo site/admin quanto pelo atendimento IA no WhatsApp).
+   - Guia completo de arquitetura, segurança e catálogo de endpoints em [docs/MODULO_GOOGLE_CALENDAR.md](docs/MODULO_GOOGLE_CALENDAR.md).
 
 ---
 
@@ -88,6 +89,7 @@ sistema-agendamento/
 ├── docs/
 │   ├── INSTALL.md                 # Instalação em VPS (script, DNS, Caddy)
 │   ├── DEPLOY.md                  # Operação, update, backup e troubleshooting
+│   ├── MODULO_GOOGLE_CALENDAR.md  # Integração Google Calendar OAuth 2.0 BYOK
 │   ├── MODULO_PLANOS_E_ASSINATURAS_ASAAS.md
 │   ├── MODULO_WHATSAPP_WUZAPI_E_IA.md
 │   └── ARQUITETURA_E_API.md
