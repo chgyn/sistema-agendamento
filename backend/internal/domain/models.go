@@ -57,6 +57,10 @@ var (
 	ErrSubscriptionNotFound        = errors.New("assinatura do estabelecimento não encontrada")
 	ErrSubscriptionRequired        = errors.New("assinatura pendente ou inativa. Regularize seu plano para acessar todos os recursos")
 	ErrPlanLimitReached            = errors.New("limite de recursos do plano atingido")
+	ErrGoogleCalendarNotConfigured = errors.New("credenciais OAuth do Google Calendar não configuradas para este estabelecimento")
+	ErrGoogleCalendarNotConnected  = errors.New("conta do Google Calendar não está conectada")
+	ErrGoogleCalendarAuthExpired   = errors.New("autorização do Google Calendar expirada ou revogada; reconecte sua conta")
+	ErrInvalidOAuthState           = errors.New("estado OAuth inválido ou expirado")
 )
 
 // PlanBillingCycle periodicidade comercial suportada pelo Asaas
@@ -206,8 +210,9 @@ type Tenant struct {
 	Users         []User                `gorm:"foreignKey:TenantID" json:"users,omitempty"`
 	Professionals []Professional        `gorm:"foreignKey:TenantID" json:"professionals,omitempty"`
 	Services      []Service             `gorm:"foreignKey:TenantID" json:"services,omitempty"`
-	Subscription  *Subscription         `gorm:"foreignKey:TenantID" json:"subscription,omitempty"`
-	WhatsAppConfig *TenantWhatsAppConfig `gorm:"foreignKey:TenantID" json:"whatsapp_config,omitempty"`
+	Subscription         *Subscription               `gorm:"foreignKey:TenantID" json:"subscription,omitempty"`
+	WhatsAppConfig       *TenantWhatsAppConfig       `gorm:"foreignKey:TenantID" json:"whatsapp_config,omitempty"`
+	GoogleCalendarConfig *TenantGoogleCalendarConfig `gorm:"foreignKey:TenantID" json:"google_calendar_config,omitempty"`
 }
 
 // User representa os operadores, administradores de tenant ou administradores gerais
@@ -436,5 +441,82 @@ type WhatsAppMessage struct {
 	Body           string    `gorm:"type:text;not null" json:"body"`
 	WuzapiMsgID    string    `gorm:"type:varchar(100);index" json:"wuzapi_msg_id,omitempty"`
 	CreatedAt      time.Time `gorm:"index;not null" json:"created_at"`
+}
+
+// -------------------------------------------------------------
+// INTEGRAÇÃO GOOGLE CALENDAR (OAUTH 2.0 MULTI-TENANT BYOK)
+// -------------------------------------------------------------
+
+type GoogleCalendarConnectionStatus string
+
+const (
+	GoogleCalendarStatusDisconnected GoogleCalendarConnectionStatus = "DISCONNECTED"
+	GoogleCalendarStatusConnected    GoogleCalendarConnectionStatus = "CONNECTED"
+	GoogleCalendarStatusExpired      GoogleCalendarConnectionStatus = "EXPIRED"
+	GoogleCalendarStatusError        GoogleCalendarConnectionStatus = "ERROR"
+)
+
+type CalendarSyncProvider string
+
+const (
+	CalendarProviderGoogle CalendarSyncProvider = "GOOGLE_CALENDAR"
+)
+
+type CalendarSyncStatus string
+
+const (
+	CalendarSyncStatusPending CalendarSyncStatus = "PENDING"
+	CalendarSyncStatusSynced  CalendarSyncStatus = "SYNCED"
+	CalendarSyncStatusFailed  CalendarSyncStatus = "FAILED"
+	CalendarSyncStatusDeleted CalendarSyncStatus = "DELETED"
+)
+
+type CalendarSyncAction string
+
+const (
+	CalendarSyncActionCreate CalendarSyncAction = "CREATE"
+	CalendarSyncActionUpdate CalendarSyncAction = "UPDATE"
+	CalendarSyncActionDelete CalendarSyncAction = "DELETE"
+)
+
+// TenantGoogleCalendarConfig armazena credenciais OAuth BYOK e sessão Google Calendar de cada Tenant
+type TenantGoogleCalendarConfig struct {
+	ID                          uuid.UUID                      `gorm:"type:uuid;primaryKey" json:"id"`
+	TenantID                    uuid.UUID                      `gorm:"type:uuid;uniqueIndex;not null" json:"tenant_id"`
+	IsEnabled                   bool                           `gorm:"default:false" json:"is_enabled"`
+	Status                      GoogleCalendarConnectionStatus `gorm:"type:varchar(30);default:'DISCONNECTED';index;not null" json:"status"`
+	GoogleClientID              string                         `gorm:"type:varchar(255)" json:"google_client_id"`
+	GoogleClientSecretEncrypted string                         `gorm:"type:text" json:"-"`
+	GoogleAccountEmail          string                         `gorm:"type:varchar(150)" json:"google_account_email"`
+	AccessTokenEncrypted        string                         `gorm:"type:text" json:"-"`
+	RefreshTokenEncrypted       string                         `gorm:"type:text" json:"-"`
+	TokenExpiresAt              *time.Time                     `json:"token_expires_at,omitempty"`
+	CalendarID                  string                         `gorm:"type:varchar(255);default:'primary'" json:"calendar_id"`
+	CalendarSummary             string                         `gorm:"type:varchar(255)" json:"calendar_summary"`
+	LastSyncAt                  *time.Time                     `json:"last_sync_at,omitempty"`
+	LastError                   string                         `gorm:"type:text" json:"last_error"`
+	CreatedAt                   time.Time                      `json:"created_at"`
+	UpdatedAt                   time.Time                      `json:"updated_at"`
+
+	Tenant *Tenant `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
+}
+
+// AppointmentCalendarSync mantém o vínculo idempotente entre agendamento local e evento externo
+type AppointmentCalendarSync struct {
+	ID                 uuid.UUID            `gorm:"type:uuid;primaryKey" json:"id"`
+	TenantID           uuid.UUID            `gorm:"type:uuid;index;not null;uniqueIndex:idx_apt_cal_sync_unique" json:"tenant_id"`
+	AppointmentID      uuid.UUID            `gorm:"type:uuid;index;not null;uniqueIndex:idx_apt_cal_sync_unique" json:"appointment_id"`
+	Provider           CalendarSyncProvider `gorm:"type:varchar(30);default:'GOOGLE_CALENDAR';not null;uniqueIndex:idx_apt_cal_sync_unique" json:"provider"`
+	ExternalCalendarID string               `gorm:"type:varchar(255)" json:"external_calendar_id"`
+	ExternalEventID    string               `gorm:"type:varchar(255);index" json:"external_event_id"`
+	SyncStatus         CalendarSyncStatus   `gorm:"type:varchar(20);default:'PENDING';index;not null" json:"sync_status"`
+	LastAction         CalendarSyncAction   `gorm:"type:varchar(20)" json:"last_action"`
+	AttemptCount       int                  `gorm:"default:0" json:"attempt_count"`
+	LastError          string               `gorm:"type:text" json:"last_error"`
+	LastSyncedAt       *time.Time           `json:"last_synced_at,omitempty"`
+	CreatedAt          time.Time            `json:"created_at"`
+	UpdatedAt          time.Time            `json:"updated_at"`
+
+	Appointment *Appointment `gorm:"foreignKey:AppointmentID" json:"appointment,omitempty"`
 }
 

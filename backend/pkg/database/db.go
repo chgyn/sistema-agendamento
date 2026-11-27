@@ -101,6 +101,8 @@ func autoMigrate(db *gorm.DB) error {
 		&domain.TenantWhatsAppConfig{},
 		&domain.WhatsAppConversation{},
 		&domain.WhatsAppMessage{},
+		&domain.TenantGoogleCalendarConfig{},
+		&domain.AppointmentCalendarSync{},
 	)
 	if err != nil {
 		return fmt.Errorf("falha na migração do banco: %w", err)

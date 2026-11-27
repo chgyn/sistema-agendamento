@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,15 +23,30 @@ type CreateAppointmentDTO struct {
 }
 
 type AppointmentService struct {
-	repo        *postgres.Repository
-	queueClient *queue.QueueClient
+	repo             *postgres.Repository
+	queueClient      *queue.QueueClient
+	calendarEnqueuer CalendarSyncEnqueuer
+	googleCalRepo    domain.GoogleCalendarRepository
 }
 
 func NewAppointmentService(repo *postgres.Repository, qClient *queue.QueueClient) *AppointmentService {
-	return &AppointmentService{
+	svc := &AppointmentService{
 		repo:        repo,
 		queueClient: qClient,
 	}
+	if qClient != nil {
+		svc.calendarEnqueuer = qClient
+	}
+	if repo != nil {
+		svc.googleCalRepo = repo
+	}
+	return svc
+}
+
+// SetCalendarSyncDependencies permite injetar mocks ou enqueuer customizado em testes
+func (s *AppointmentService) SetCalendarSyncDependencies(enqueuer CalendarSyncEnqueuer, calRepo domain.GoogleCalendarRepository) {
+	s.calendarEnqueuer = enqueuer
+	s.googleCalRepo = calRepo
 }
 
 // CreateAppointment executa a reserva do atendimento com proteção contra dupla reserva
@@ -102,6 +118,9 @@ func (s *AppointmentService) CreateAppointment(ctx context.Context, dto CreateAp
 		})
 	}
 
+	// 9. Enfileira sincronização com Google Calendar (não-bloqueante)
+	s.enqueueGoogleCalendarSync(ctx, dto.TenantID, apt.ID, domain.CalendarSyncActionCreate)
+
 	return apt, nil
 }
 
@@ -117,7 +136,11 @@ func (s *AppointmentService) Cancel(ctx context.Context, tenantID, id uuid.UUID,
 	if reason == "" {
 		reason = "Cancelado pelo usuário/cliente"
 	}
-	return s.repo.UpdateAppointmentStatus(ctx, tenantID, id, domain.StatusCancelled, changedBy, reason)
+	if err := s.repo.UpdateAppointmentStatus(ctx, tenantID, id, domain.StatusCancelled, changedBy, reason); err != nil {
+		return err
+	}
+	s.enqueueGoogleCalendarSync(ctx, tenantID, id, domain.CalendarSyncActionDelete)
+	return nil
 }
 
 func (s *AppointmentService) Complete(ctx context.Context, tenantID, id uuid.UUID, changedBy string) error {
@@ -131,5 +154,50 @@ func (s *AppointmentService) Reschedule(ctx context.Context, tenantID, id uuid.U
 	}
 
 	newEndAt := newStartAt.Add(time.Duration(apt.DurationMinutes) * time.Minute)
-	return s.repo.RescheduleAppointment(ctx, tenantID, id, newStartAt, newEndAt, newProID)
+	if err := s.repo.RescheduleAppointment(ctx, tenantID, id, newStartAt, newEndAt, newProID); err != nil {
+		return err
+	}
+	s.enqueueGoogleCalendarSync(ctx, tenantID, id, domain.CalendarSyncActionUpdate)
+	return nil
+}
+
+func (s *AppointmentService) enqueueGoogleCalendarSync(ctx context.Context, tenantID, appointmentID uuid.UUID, action domain.CalendarSyncAction) {
+	if s.calendarEnqueuer == nil || s.googleCalRepo == nil {
+		return
+	}
+
+	cfg, cfgErr := s.googleCalRepo.GetGoogleCalendarConfigByTenantID(ctx, tenantID)
+	if cfgErr != nil {
+		log.Printf("⚠️ [AppointmentService] Falha ao consultar config Google Calendar (tenant=%s): %v", tenantID, cfgErr)
+		return
+	}
+	if cfg == nil || !cfg.IsEnabled || cfg.Status != domain.GoogleCalendarStatusConnected {
+		return
+	}
+
+	err := s.calendarEnqueuer.EnqueueGoogleCalendarSync(ctx, queue.GoogleCalendarSyncPayload{
+		TenantID:      tenantID,
+		AppointmentID: appointmentID,
+		Action:        action,
+	})
+	if err == nil {
+		return
+	}
+
+	log.Printf("⚠️ [AppointmentService] Falha ao enfileirar sync Google Calendar (tenant=%s apt=%s action=%s): %v",
+		tenantID, appointmentID, action, err)
+
+	syncRec, recErr := s.googleCalRepo.GetAppointmentCalendarSync(ctx, tenantID, appointmentID, domain.CalendarProviderGoogle)
+	if recErr != nil || syncRec == nil {
+		syncRec = &domain.AppointmentCalendarSync{
+			ID:            uuid.New(),
+			TenantID:      tenantID,
+			AppointmentID: appointmentID,
+			Provider:      domain.CalendarProviderGoogle,
+		}
+	}
+	syncRec.SyncStatus = domain.CalendarSyncStatusFailed
+	syncRec.LastAction = action
+	syncRec.LastError = "Falha ao enfileirar sincronização: " + err.Error()
+	_ = s.googleCalRepo.UpsertAppointmentCalendarSync(ctx, syncRec)
 }

@@ -26,6 +26,7 @@ type RouterConfig struct {
 	WebhookHandler         *WebhookHandler
 	WhatsAppHandler        *WhatsAppHandler
 	WhatsAppWebhookHandler *WhatsAppWebhookHandler
+	GoogleCalendarHandler  *GoogleCalendarHandler
 }
 
 func SetupRoutes(cfg RouterConfig) {
@@ -54,10 +55,11 @@ func SetupRoutes(cfg RouterConfig) {
 		api.GET("/public/plans", cfg.PlanHandler.ListActivePublic)
 
 		// -------------------------------------------------------------
-		// ROTAS DE WEBHOOKS (INTEGRAÇÕES EXTERNAS: ASAAS & WUZAPI)
+		// ROTAS DE WEBHOOKS & CALLBACKS (INTEGRAÇÕES EXTERNAS)
 		// -------------------------------------------------------------
 		api.POST("/webhooks/asaas", cfg.WebhookHandler.HandleAsaas)
 		api.POST("/webhooks/whatsapp", cfg.WhatsAppWebhookHandler.ReceiveWebhook)
+		api.GET("/integrations/google-calendar/callback", cfg.GoogleCalendarHandler.Callback)
 
 		// -------------------------------------------------------------
 		// ROTAS PÚBLICAS DE AGENDAMENTO (NÃO REQUEREM LOGIN)
@@ -201,6 +203,19 @@ func SetupRoutes(cfg RouterConfig) {
 					whatsapp.POST("/logout", cfg.WhatsAppHandler.Logout)
 					whatsapp.GET("/ai-config", cfg.WhatsAppHandler.GetAIConfig)
 					whatsapp.PUT("/ai-config", middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin), cfg.WhatsAppHandler.UpdateAIConfig)
+				}
+
+				// Integração Google Calendar (OAuth 2.0 BYOK)
+				gcal := tenantOps.Group("/integrations/google-calendar")
+				gcal.Use(middleware.RequireRole(domain.RoleAdminGlobal, domain.RoleAdminTenant, domain.RoleAdmin))
+				{
+					gcal.GET("/status", cfg.GoogleCalendarHandler.GetStatus)
+					gcal.GET("/auth-url", cfg.GoogleCalendarHandler.GetAuthURL)
+					gcal.GET("/calendars", cfg.GoogleCalendarHandler.ListCalendars)
+					gcal.PUT("/settings", cfg.GoogleCalendarHandler.UpdateSettings)
+					gcal.POST("/disconnect", cfg.GoogleCalendarHandler.Disconnect)
+					gcal.GET("/failures", cfg.GoogleCalendarHandler.ListFailures)
+					gcal.POST("/syncs/:appointment_id/retry", cfg.GoogleCalendarHandler.RetrySync)
 				}
 			}
 		}

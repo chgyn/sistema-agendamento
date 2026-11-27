@@ -208,6 +208,17 @@
 
             <RouterLink
               v-if="!authStore.isOperator"
+              to="/admin/google-calendar"
+              @click="mobileMenuOpen = false"
+              :class="navItemClass('/admin/google-calendar')"
+              :title="isCollapsed ? 'Google Calendar' : ''"
+            >
+              <CalendarCheck2 class="w-5 h-5 shrink-0" />
+              <span v-if="!isCollapsed" class="truncate">Google Calendar</span>
+            </RouterLink>
+
+            <RouterLink
+              v-if="!authStore.isOperator"
               to="/admin/minha-assinatura"
               @click="mobileMenuOpen = false"
               :class="navItemClass('/admin/minha-assinatura')"
@@ -356,7 +367,7 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  LayoutDashboard, Calendar, Sparkles, Users, UsersRound,
+  LayoutDashboard, Calendar, CalendarCheck2, Sparkles, Users, UsersRound,
   UserSquare2, Settings, ExternalLink, LogOut, Building2, ShieldCheck, CreditCard, Bot,
   Menu, X, ChevronLeft, ChevronRight, Sun, Moon
 } from 'lucide-vue-next'
@@ -447,6 +458,8 @@ const pageTitle = computed(() => {
       return 'Base de Clientes'
     case 'admin-whatsapp':
       return 'WhatsApp & Automação IA'
+    case 'admin-google-calendar':
+      return 'Google Calendar'
     case 'admin-subscription-billing':
       return 'Minha Assinatura'
     case 'admin-users':
