@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/sistema-agendamento/backend/internal/config"
+	"github.com/sistema-agendamento/backend/internal/domain"
 )
 
 const (
@@ -19,6 +20,7 @@ const (
 	TypeProcessAsaasWebhook           = "task:process_asaas_webhook"
 	TypeProcessWhatsAppIncoming       = "task:process_whatsapp_incoming"
 	TypeCheckSubscriptionExpirations = "task:check_subscription_expirations"
+	TypeSyncGoogleCalendar            = "task:sync_google_calendar"
 )
 
 type BookingConfirmationPayload struct {
@@ -47,6 +49,12 @@ type AsaasWebhookTaskPayload struct {
 	Event        string                 `json:"event"`
 	Payment      map[string]interface{} `json:"payment,omitempty"`
 	Subscription map[string]interface{} `json:"subscription,omitempty"`
+}
+
+type GoogleCalendarSyncPayload struct {
+	TenantID      uuid.UUID                 `json:"tenant_id"`
+	AppointmentID uuid.UUID                 `json:"appointment_id"`
+	Action        domain.CalendarSyncAction `json:"action"`
 }
 
 type QueueClient struct {
@@ -132,13 +140,39 @@ func (q *QueueClient) EnqueueWhatsAppIncoming(ctx context.Context, payload Whats
 	return nil
 }
 
+// EnqueueGoogleCalendarSync enfileira a sincronização de agendamento com Google Calendar de forma não-bloqueante
+func (q *QueueClient) EnqueueGoogleCalendarSync(ctx context.Context, payload GoogleCalendarSyncPayload) error {
+	if q == nil || q.client == nil {
+		return nil
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	task := asynq.NewTask(TypeSyncGoogleCalendar, data, asynq.MaxRetry(5), asynq.Timeout(30*time.Second), asynq.Queue("default"))
+	info, err := q.client.EnqueueContext(ctx, task)
+	if err != nil {
+		log.Printf("⚠️ [Queue] Falha ao enfileirar task Google Calendar: %v", err)
+		return err
+	}
+
+	log.Printf("🚀 [Queue] Task Google Calendar enfileirada: ID=%s Action=%s Appointment=%s", info.ID, payload.Action, payload.AppointmentID)
+	return nil
+}
+
 // WhatsAppProcessor define o contrato para processamento da mensagem de WhatsApp pelo worker
 type WhatsAppProcessor interface {
 	ProcessCustomerMessage(ctx context.Context, tenantID uuid.UUID, customerPhone, customerName, incomingText, msgID string) error
 }
 
+// GoogleCalendarSyncProcessor define o contrato para sincronização de agendamentos com o Google Calendar no worker
+type GoogleCalendarSyncProcessor interface {
+	SyncAppointment(ctx context.Context, tenantID, appointmentID uuid.UUID, action domain.CalendarSyncAction) error
+}
+
 // StartWorkerServer inicia o servidor consumidor de tarefas do Asynq
-func StartWorkerServer(cfg *config.Config, processor WhatsAppProcessor) (*asynq.Server, error) {
+func StartWorkerServer(cfg *config.Config, processor WhatsAppProcessor, calendarProcessor GoogleCalendarSyncProcessor) (*asynq.Server, error) {
 	redisAddr := fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort)
 	srv := asynq.NewServer(
 		asynq.RedisClientOpt{
@@ -161,6 +195,7 @@ func StartWorkerServer(cfg *config.Config, processor WhatsAppProcessor) (*asynq.
 	mux.HandleFunc(TypeAutoCancelPending, HandleAutoCancelPendingTask)
 	mux.HandleFunc(TypeProcessAsaasWebhook, HandleProcessAsaasWebhookTask)
 	mux.HandleFunc(TypeProcessWhatsAppIncoming, HandleProcessWhatsAppIncomingTask(processor))
+	mux.HandleFunc(TypeSyncGoogleCalendar, HandleSyncGoogleCalendarTask(calendarProcessor))
 
 	log.Println("👷 [Worker] Asynq worker server pronto e ouvindo filas Redis...")
 	return srv, srv.Run(mux)
@@ -214,6 +249,27 @@ func HandleProcessWhatsAppIncomingTask(processor WhatsAppProcessor) func(context
 			}
 		} else {
 			log.Printf("⚠️ [Worker Asynq] WhatsAppProcessor não injetado no worker")
+		}
+
+		return nil
+	}
+}
+
+func HandleSyncGoogleCalendarTask(processor GoogleCalendarSyncProcessor) func(context.Context, *asynq.Task) error {
+	return func(ctx context.Context, t *asynq.Task) error {
+		var p GoogleCalendarSyncPayload
+		if err := json.Unmarshal(t.Payload(), &p); err != nil {
+			return fmt.Errorf("json.Unmarshal falhou no payload Google Calendar: %v: %w", err, asynq.SkipRetry)
+		}
+
+		log.Printf("📅 [Worker Asynq] Sincronizando agendamento %s (tenant=%s action=%s)", p.AppointmentID, p.TenantID, p.Action)
+		if processor != nil {
+			if err := processor.SyncAppointment(ctx, p.TenantID, p.AppointmentID, p.Action); err != nil {
+				log.Printf("❌ [Worker Asynq] Erro ao sincronizar Google Calendar: %v", err)
+				return err
+			}
+		} else {
+			log.Printf("⚠️ [Worker Asynq] GoogleCalendarSyncProcessor não injetado no worker")
 		}
 
 		return nil

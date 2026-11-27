@@ -5,6 +5,7 @@ import (
 
 	"github.com/sistema-agendamento/backend/internal/config"
 	"github.com/sistema-agendamento/backend/internal/integrations/ai"
+	"github.com/sistema-agendamento/backend/internal/integrations/googlecalendar"
 	"github.com/sistema-agendamento/backend/internal/integrations/wuzapi"
 	"github.com/sistema-agendamento/backend/internal/queue"
 	"github.com/sistema-agendamento/backend/internal/repository/postgres"
@@ -53,7 +54,19 @@ func runWorker(cfg *config.Config) error {
 		cfg.EncryptionKey,
 	)
 
-	// 3. Inicia servidor consumidor de filas com o processador de WhatsApp injetado
-	_, err = queue.StartWorkerServer(cfg, aiChatService)
+	gcalClient := googlecalendar.NewClient()
+	gcalService := service.NewGoogleCalendarService(
+		repo,
+		repo,
+		gcalClient,
+		queueClient,
+		nil,
+		cfg.JWTSecret,
+		cfg.EncryptionKey,
+		cfg.GoogleOAuthRedirectURI,
+	)
+
+	// 3. Inicia servidor consumidor de filas com processadores de WhatsApp e Google Calendar
+	_, err = queue.StartWorkerServer(cfg, aiChatService, gcalService)
 	return err
 }

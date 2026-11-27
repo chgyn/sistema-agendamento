@@ -1,12 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"github.com/sistema-agendamento/backend/internal/config"
 	"github.com/sistema-agendamento/backend/internal/handler"
 	"github.com/sistema-agendamento/backend/internal/integrations/asaas"
+	"github.com/sistema-agendamento/backend/internal/integrations/googlecalendar"
 	"github.com/sistema-agendamento/backend/internal/integrations/wuzapi"
 	"github.com/sistema-agendamento/backend/internal/queue"
 	"github.com/sistema-agendamento/backend/internal/repository/postgres"
@@ -42,9 +45,16 @@ func main() {
 	queueClient := queue.NewQueueClient(cfg)
 	defer queueClient.Close()
 
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort),
+		Password: cfg.RedisPass,
+	})
+	defer redisClient.Close()
+
 	// 6. Inicializa Integrações Externas
 	asaasClient := asaas.NewClient(cfg.AsaasBaseURL, cfg.AsaasAPIKey)
 	wuzapiClient := wuzapi.NewClient(cfg.WUZAPIBaseURL, cfg.WUZAPIAdminToken)
+	gcalClient := googlecalendar.NewClient()
 
 	// 7. Inicializa Serviços
 	jwtService := jwt.NewJWTService(cfg.JWTSecret, cfg.JWTExpiresIn)
@@ -59,6 +69,16 @@ func main() {
 		appBaseURL = "http://localhost:" + cfg.Port
 	}
 	waService := service.NewWhatsAppService(repo, wuzapiClient, cfg.EncryptionKey, appBaseURL)
+	gcalService := service.NewGoogleCalendarService(
+		repo,
+		repo,
+		gcalClient,
+		queueClient,
+		redisClient,
+		cfg.JWTSecret,
+		cfg.EncryptionKey,
+		cfg.GoogleOAuthRedirectURI,
+	)
 
 	// 8. Inicializa Handlers
 	authHandler := handler.NewAuthHandler(authService, repo)
@@ -75,6 +95,7 @@ func main() {
 	webhookHandler := handler.NewWebhookHandler(cfg, queueClient, subService)
 	waHandler := handler.NewWhatsAppHandler(waService)
 	waWebhookHandler := handler.NewWhatsAppWebhookHandler(repo, queueClient)
+	gcalHandler := handler.NewGoogleCalendarHandler(gcalService, cfg.FrontendURL)
 
 	// 9. Configura Router Gin
 	r := gin.Default()
@@ -96,6 +117,7 @@ func main() {
 		WebhookHandler:         webhookHandler,
 		WhatsAppHandler:        waHandler,
 		WhatsAppWebhookHandler: waWebhookHandler,
+		GoogleCalendarHandler:  gcalHandler,
 	})
 
 	// 10. Inicia Servidor HTTP

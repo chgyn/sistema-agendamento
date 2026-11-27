@@ -484,7 +484,7 @@ func (s *AIChatService) executeTool(ctx context.Context, tenantID uuid.UUID, too
 			return `{"erro": "ID de agendamento inválido"}`
 		}
 
-		err = s.repo.UpdateAppointmentStatus(ctx, tenantID, aptID, domain.StatusCancelled, "WhatsApp AI", motivo)
+		err = s.aptService.Cancel(ctx, tenantID, aptID, motivo, "WhatsApp AI")
 		if err != nil {
 			return fmt.Sprintf(`{"sucesso": false, "erro": "%s"}`, err.Error())
 		}
