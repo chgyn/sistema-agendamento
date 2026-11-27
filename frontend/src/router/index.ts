@@ -18,6 +18,7 @@ import GlobalAdminsView from '../views/admin/GlobalAdminsView.vue'
 import PlansManagementView from '../views/admin/PlansManagementView.vue'
 import SubscriptionBillingView from '../views/admin/SubscriptionBillingView.vue'
 import WhatsAppView from '../views/admin/WhatsAppView.vue'
+import GoogleCalendarView from '../views/admin/GoogleCalendarView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -112,6 +113,12 @@ const router = createRouter({
           path: 'whatsapp',
           name: 'admin-whatsapp',
           component: WhatsAppView,
+          meta: { roles: ['ADMIN_GLOBAL', 'ADMIN_TENANT', 'ADMIN'] },
+        },
+        {
+          path: 'google-calendar',
+          name: 'admin-google-calendar',
+          component: GoogleCalendarView,
           meta: { roles: ['ADMIN_GLOBAL', 'ADMIN_TENANT', 'ADMIN'] },
         },
         {

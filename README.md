@@ -47,6 +47,10 @@ Plataforma completa de agendamento de atendimentos desenvolvida com **Go (Gin Go
    - Modal de detalhamento com resumo do plano, identificadores Asaas (`AsaasSubscriptionID`, `AsaasCustomerID`), histórico de faturas e ajuste manual de status.
 6. **🔒 Prevenção Concorrente de Dupla Reserva:**
    - Transações atômicas com `SELECT ... FOR UPDATE` no PostgreSQL e validação matemática de sobreposição de intervalos temporais.
+7. **📅 Integração Google Calendar (OAuth 2.0 Multi-Tenant BYOK):**
+   - Cada estabelecimento configura seu próprio **Google OAuth Client ID e Client Secret** (cifrado com **AES-256-GCM**), sem compartilhamento de credenciais entre tenants.
+   - Fluxo OAuth seguro com `state` assinado por HMAC-SHA256 e nonce de uso único no Redis (`GetDel`).
+   - Sincronização assíncrona e idempotente via **Asynq + Redis** (`task:sync_google_calendar`) para criação, reagendamento e remoção (`DELETE`) no cancelamento (tanto pelo site/admin quanto pelo atendimento IA no WhatsApp).
 
 ---
 

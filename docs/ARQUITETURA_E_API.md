@@ -75,6 +75,7 @@ Para garantir que dois agendamentos não sejam confirmados no mesmo horário e p
 | `task:appointment_created` | `critical` | `{ "appointment_id": "uuid" }` | Processa confirmações e notificações de agendamento |
 | `task:appointment_reminder` | `default` | `{ "appointment_id": "uuid" }` | Dispara lembretes agendados com antecedência |
 | `task:process_asaas_webhook` | `critical` | `{ "event": "PAYMENT_CONFIRMED", "payment": {...} }` | Atualiza assinaturas e faturas em segundo plano |
+| `task:sync_google_calendar` | `default` | `{ "tenant_id": "uuid", "appointment_id": "uuid", "action": "CREATE\|UPDATE\|DELETE" }` | Sincroniza criação, reagendamento e cancelamento no Google Calendar do tenant |
 
 ---
 
@@ -123,3 +124,11 @@ Para garantir que dois agendamentos não sejam confirmados no mesmo horário e p
 - `GET /api/v1/admin/professionals` -> Gestão de profissionais e horários.
 - `GET /api/v1/admin/customers` -> Histórico e CRM de clientes.
 - `GET /api/v1/admin/settings` -> Configurações visuais e intervalos de atendimento.
+- `GET /api/v1/integrations/google-calendar/callback` -> Callback OAuth 2.0 público do Google Calendar (validação de `state` e redirect para o frontend).
+- `GET /api/v1/admin/integrations/google-calendar/status` -> Status da integração Google Calendar do tenant (`ADMIN_TENANT` / `ADMIN_GLOBAL`).
+- `GET /api/v1/admin/integrations/google-calendar/auth-url` -> Gera URL de consentimento OAuth 2.0 BYOK do tenant.
+- `GET /api/v1/admin/integrations/google-calendar/calendars` -> Lista calendários graváveis da conta Google conectada.
+- `PUT /api/v1/admin/integrations/google-calendar/settings` -> Salva credenciais OAuth BYOK, calendário destino e toggle de sincronização.
+- `POST /api/v1/admin/integrations/google-calendar/disconnect` -> Desconecta a conta Google mantendo as credenciais BYOK.
+- `GET /api/v1/admin/integrations/google-calendar/failures` -> Lista falhas de sincronização de agendamentos do tenant.
+- `POST /api/v1/admin/integrations/google-calendar/syncs/:appointment_id/retry` -> Reenfileira manualmente a sincronização de um agendamento.
