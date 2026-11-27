@@ -6,7 +6,7 @@ Este documento descreve a arquitetura, modelo de dados, camada de segurança e c
 
 ## 1. 📌 Visão Geral do Módulo
 
-O módulo permite que cada estabelecimento comercial (`Tenant`) conecte sua própria agenda Google Calendar para sincronizar agendamentos em tempo real de forma bidirecional ou assíncrona.
+O módulo permite que cada estabelecimento comercial (`Tenant`) conecte sua própria agenda Google Calendar para sincronizar agendamentos de forma unidirecional (Agende Fácil → Google Calendar) e assíncrona via fila Asynq.
 
 ### Principais Pilares Arquiteturais:
 1. **Filosofia BYOK (*Bring Your Own Key*):** A plataforma não utiliza uma conta centralizada ou Service Account compartilhada. Cada estabelecimento configura seu próprio `Client ID` e `Client Secret` obtidos no seu Google Cloud Console, garantindo isolamento total de cotas de API, limites de requisições e soberania de dados.
