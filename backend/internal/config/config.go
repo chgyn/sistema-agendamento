@@ -3,36 +3,40 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	Port               string
-	DBDriver           string
-	DBHost             string
-	DBPort             string
-	DBUser             string
-	DBPassword         string
-	DBName             string
-	DBSSLMode          string
-	DBURL              string
-	RedisHost          string
-	RedisPort          string
-	RedisPass          string
-	JWTSecret          string
-	JWTExpiresIn       int
-	Environment        string
-	CORSOrigin         string
-	AsaasAPIKey        string
-	AsaasBaseURL       string
-	AsaasWebhookSecret string
-	WUZAPIBaseURL      string
-	WUZAPIAdminToken   string
-	EncryptionKey      string
-	SeedDemo           bool
-	InitialAdminEmail  string
-	InitialAdminPassword string
+	Port                   string
+	DBDriver               string
+	DBHost                 string
+	DBPort                 string
+	DBUser                 string
+	DBPassword             string
+	DBName                 string
+	DBSSLMode              string
+	DBURL                  string
+	RedisHost              string
+	RedisPort              string
+	RedisPass              string
+	JWTSecret              string
+	JWTExpiresIn           int
+	Environment            string
+	CORSOrigin             string
+	AppPublicURL           string
+	FrontendURL            string
+	GoogleOAuthRedirectURI string
+	AsaasAPIKey            string
+	AsaasBaseURL           string
+	AsaasWebhookSecret     string
+	WUZAPIBaseURL          string
+	WUZAPIAdminToken       string
+	EncryptionKey          string
+	SeedDemo               bool
+	InitialAdminEmail      string
+	InitialAdminPassword   string
 }
 
 func Load() *Config {
@@ -62,6 +66,15 @@ func Load() *Config {
 	env := getEnv("APP_ENV", "development")
 	corsOrigin := getEnv("CORS_ORIGIN", "*")
 
+	appPublicURL := getEnv("APP_PUBLIC_URL", "http://localhost:"+port)
+	defaultFrontendURL := "http://localhost:5173"
+	if env == "production" {
+		defaultFrontendURL = appPublicURL
+	}
+	frontendURL := getEnv("FRONTEND_URL", defaultFrontendURL)
+	defaultGoogleRedirectURI := strings.TrimRight(appPublicURL, "/") + "/api/v1/integrations/google-calendar/callback"
+	googleOAuthRedirectURI := getEnv("GOOGLE_OAUTH_REDIRECT_URI", defaultGoogleRedirectURI)
+
 	asaasAPIKey := getEnv("ASAAS_API_KEY", "$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OjQ1NjY2ZDQ4LWQxM2YtNDA1YS1hMmRjLTE0MjQ5NTQwNzJhNTo6JGFhY2hfOTVkODc0YmYtOWIyYi00YWEwLWFlZjYtMjgxY2YwYmQ1OTQy")
 	asaasBaseURL := getEnv("ASAAS_BASE_URL", "https://sandbox.asaas.com/api/v3")
 	asaasWebhookSecret := getEnv("ASAAS_WEBHOOK_SECRET", "whsec_hhwwxdTmKX30aXHwqiSGB9jtv9zYbM8IAo-oCDNeSdg")
@@ -89,9 +102,12 @@ func Load() *Config {
 		RedisPass:          redisPass,
 		JWTSecret:          jwtSecret,
 		JWTExpiresIn:       jwtExpires,
-		Environment:        env,
-		CORSOrigin:         corsOrigin,
-		AsaasAPIKey:        asaasAPIKey,
+		Environment:            env,
+		CORSOrigin:             corsOrigin,
+		AppPublicURL:           appPublicURL,
+		FrontendURL:            frontendURL,
+		GoogleOAuthRedirectURI: googleOAuthRedirectURI,
+		AsaasAPIKey:            asaasAPIKey,
 		AsaasBaseURL:       asaasBaseURL,
 		AsaasWebhookSecret: asaasWebhookSecret,
 		WUZAPIBaseURL:      wuzapiBaseURL,

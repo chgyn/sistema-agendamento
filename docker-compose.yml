@@ -61,6 +61,9 @@ services:
     environment:
       PORT: ${PORT:-8080}
       APP_ENV: ${APP_ENV:-production}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-}
+      FRONTEND_URL: ${FRONTEND_URL:-}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-}
       DB_DRIVER: postgres
       DB_HOST: postgres
       DB_PORT: "5432"
@@ -74,6 +77,9 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN_HOURS: ${JWT_EXPIRES_IN_HOURS:-72}
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-}
+      FRONTEND_URL: ${FRONTEND_URL:-}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-}
       ASAAS_API_KEY: ${ASAAS_API_KEY:-}
       ASAAS_BASE_URL: ${ASAAS_BASE_URL:-https://sandbox.asaas.com/api/v3}
       ASAAS_WEBHOOK_SECRET: ${ASAAS_WEBHOOK_SECRET:-}
@@ -110,6 +116,9 @@ services:
         required: false
     environment:
       APP_ENV: ${APP_ENV:-production}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-}
+      FRONTEND_URL: ${FRONTEND_URL:-}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-}
       DB_DRIVER: postgres
       DB_HOST: postgres
       DB_PORT: "5432"

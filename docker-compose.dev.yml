@@ -25,6 +25,9 @@ services:
       - "8080:8080"
     environment:
       APP_ENV: ${APP_ENV:-development}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:8080}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-}
       DB_USER: ${POSTGRES_USER:-postgres}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
       DB_NAME: ${POSTGRES_DB:-sistema_agendamento}
@@ -36,6 +39,9 @@ services:
   worker:
     environment:
       APP_ENV: ${APP_ENV:-development}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:8080}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-}
       DB_USER: ${POSTGRES_USER:-postgres}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
       DB_NAME: ${POSTGRES_DB:-sistema_agendamento}

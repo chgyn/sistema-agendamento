@@ -298,3 +298,89 @@ type DashboardAnalyticsResponse struct {
 	RecentAppointments []Appointment        `json:"recent_appointments"`
 }
 
+// -------------------------------------------------------------
+// GOOGLE CALENDAR INTEGRATION DTOs & PORTS
+// -------------------------------------------------------------
+
+type GoogleCalendarConfigResponseDTO struct {
+	GoogleClientID     string                         `json:"google_client_id"`
+	HasClientSecret    bool                           `json:"has_client_secret"`
+	HasCredentials     bool                           `json:"has_credentials"`
+	RedirectURI        string                         `json:"redirect_uri"`
+	IsEnabled          bool                           `json:"is_enabled"`
+	Status             GoogleCalendarConnectionStatus `json:"status"`
+	GoogleAccountEmail string                         `json:"google_account_email"`
+	CalendarID         string                         `json:"calendar_id"`
+	CalendarSummary    string                         `json:"calendar_summary"`
+	LastSyncAt         *time.Time                     `json:"last_sync_at,omitempty"`
+	LastError          string                         `json:"last_error"`
+	FailedSyncsCount   int64                          `json:"failed_syncs_count"`
+}
+
+type UpdateGoogleCalendarSettingsDTO struct {
+	IsEnabled          *bool   `json:"is_enabled"`
+	CalendarID         *string `json:"calendar_id"`
+	CalendarSummary    *string `json:"calendar_summary"`
+	GoogleClientID     *string `json:"google_client_id"`
+	GoogleClientSecret *string `json:"google_client_secret"`
+}
+
+type GoogleCalendarItemDTO struct {
+	ID         string `json:"id"`
+	Summary    string `json:"summary"`
+	Primary    bool   `json:"primary"`
+	AccessRole string `json:"access_role"`
+}
+
+type AppointmentCalendarSyncDTO struct {
+	AppointmentID    uuid.UUID          `json:"appointment_id"`
+	CustomerName     string             `json:"customer_name"`
+	ServiceName      string             `json:"service_name"`
+	ProfessionalName string             `json:"professional_name"`
+	StartAt          time.Time          `json:"start_at"`
+	SyncStatus       CalendarSyncStatus `json:"sync_status"`
+	LastAction       CalendarSyncAction `json:"last_action"`
+	AttemptCount     int                `json:"attempt_count"`
+	LastError        string             `json:"last_error"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+}
+
+type CalendarEventInput struct {
+	EventID      string            `json:"event_id,omitempty"`
+	Summary      string            `json:"summary"`
+	Description  string            `json:"description,omitempty"`
+	StartAt      time.Time         `json:"start_at"`
+	EndAt        time.Time         `json:"end_at"`
+	TimeZone     string            `json:"time_zone,omitempty"`
+	PrivateProps map[string]string `json:"private_props,omitempty"`
+}
+
+type OAuthTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int    `json:"expires_in"`
+	TokenType    string `json:"token_type"`
+	Scope        string `json:"scope"`
+}
+
+type GoogleCalendarRepository interface {
+	GetGoogleCalendarConfigByTenantID(ctx context.Context, tenantID uuid.UUID) (*TenantGoogleCalendarConfig, error)
+	UpsertGoogleCalendarConfig(ctx context.Context, cfg *TenantGoogleCalendarConfig) error
+	GetAppointmentCalendarSync(ctx context.Context, tenantID, appointmentID uuid.UUID, provider CalendarSyncProvider) (*AppointmentCalendarSync, error)
+	UpsertAppointmentCalendarSync(ctx context.Context, syncRec *AppointmentCalendarSync) error
+	ListFailedCalendarSyncs(ctx context.Context, tenantID uuid.UUID, provider CalendarSyncProvider) ([]AppointmentCalendarSync, error)
+	CountFailedCalendarSyncs(ctx context.Context, tenantID uuid.UUID, provider CalendarSyncProvider) (int64, error)
+}
+
+type CalendarProvider interface {
+	BuildAuthURL(clientID, redirectURI, state string) string
+	ExchangeCode(ctx context.Context, clientID, clientSecret, redirectURI, code string) (*OAuthTokenResponse, error)
+	RefreshToken(ctx context.Context, clientID, clientSecret, refreshToken string) (*OAuthTokenResponse, error)
+	RevokeToken(ctx context.Context, token string) error
+	GetUserEmail(ctx context.Context, accessToken string) (string, error)
+	ListCalendars(ctx context.Context, accessToken string) ([]GoogleCalendarItemDTO, error)
+	CreateEvent(ctx context.Context, accessToken, calendarID string, event CalendarEventInput) (string, error)
+	UpdateEvent(ctx context.Context, accessToken, calendarID, eventID string, event CalendarEventInput) (string, error)
+	DeleteEvent(ctx context.Context, accessToken, calendarID, eventID string) error
+}
+
