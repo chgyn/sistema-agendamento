@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -161,6 +162,33 @@ func (m *mockEnqueuer) EnqueueGoogleCalendarSync(ctx context.Context, payload qu
 	return nil
 }
 
+type mockOAuthStateStore struct {
+	mu   sync.Mutex
+	data map[string]string
+}
+
+func newMockOAuthStateStore() *mockOAuthStateStore {
+	return &mockOAuthStateStore{data: make(map[string]string)}
+}
+
+func (s *mockOAuthStateStore) Set(ctx context.Context, key, value string, ttl time.Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data[key] = value
+	return nil
+}
+
+func (s *mockOAuthStateStore) GetDel(ctx context.Context, key string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	val, ok := s.data[key]
+	if !ok {
+		return "", errors.New("redis: nil")
+	}
+	delete(s.data, key)
+	return val, nil
+}
+
 func seedAppointmentFixtures(t *testing.T, db *gorm.DB, tenantID uuid.UUID) (proID, svcID, custID uuid.UUID) {
 	proID, svcID, custID = uuid.New(), uuid.New(), uuid.New()
 	if err := db.Create(&domain.Tenant{ID: tenantID, Slug: "t-" + tenantID.String()[:8], Name: "Barbearia Teste", IsActive: true}).Error; err != nil {
@@ -182,11 +210,27 @@ func TestGoogleCalendarService_OAuthStateSecurityAndEncryption(t *testing.T) {
 	_, repo := setupServiceTestDB(t)
 	ctx := context.Background()
 	provider := &mockCalendarProvider{}
-	svc := NewGoogleCalendarService(repo, repo, provider, nil, nil, testJWTSecret, testEncKey, "https://app.test.com/api/v1/integrations/google-calendar/callback")
+	stateStore := newMockOAuthStateStore()
+	svc := NewGoogleCalendarService(repo, repo, provider, nil, stateStore, testJWTSecret, testEncKey, "https://app.test.com/api/v1/integrations/google-calendar/callback")
 
 	tenant1 := uuid.New()
 	tenant2 := uuid.New()
 	user1 := uuid.New()
+
+	// Fail-closed quando stateStore for nil
+	nilStoreSvc := NewGoogleCalendarService(repo, repo, provider, nil, nil, testJWTSecret, testEncKey, "https://app.test.com/api/v1/integrations/google-calendar/callback")
+	cidNil, csecNil := "cid-nil", "csec-nil"
+	tenantNil := uuid.New()
+	_, _ = nilStoreSvc.UpdateSettings(ctx, tenantNil, domain.UpdateGoogleCalendarSettingsDTO{
+		GoogleClientID:     &cidNil,
+		GoogleClientSecret: &csecNil,
+	})
+	if _, err := nilStoreSvc.GetAuthURL(ctx, tenantNil, user1); err == nil {
+		t.Fatalf("esperava erro fail-closed em GetAuthURL com stateStore=nil")
+	}
+	if _, err := nilStoreSvc.HandleCallback(ctx, "code-1", "qualquer.state"); !errors.Is(err, domain.ErrInvalidOAuthState) {
+		t.Fatalf("esperava ErrInvalidOAuthState fail-closed em HandleCallback com stateStore=nil, obteve %v", err)
+	}
 
 	// Sem credenciais -> GetAuthURL falha com ErrGoogleCalendarNotConfigured
 	if _, err := svc.GetAuthURL(ctx, tenant1, user1); !errors.Is(err, domain.ErrGoogleCalendarNotConfigured) {
@@ -269,6 +313,11 @@ func TestGoogleCalendarService_OAuthStateSecurityAndEncryption(t *testing.T) {
 		t.Fatalf("HandleCallback falhou: tenant=%s err=%v", gotTenant, err)
 	}
 
+	// 5) Tentativa de replay do mesmo state já consumido deve ser rejeitada
+	if _, err := svc.HandleCallback(ctx, "code-1", validState); !errors.Is(err, domain.ErrInvalidOAuthState) {
+		t.Fatalf("esperava ErrInvalidOAuthState em tentativa de replay do mesmo state, obteve %v", err)
+	}
+
 	// Tenant2 continua desconectado (isolamento multi-tenant)
 	statusT2, _ := svc.GetStatus(ctx, tenant2)
 	if statusT2.Status != domain.GoogleCalendarStatusDisconnected || statusT2.HasCredentials {
@@ -329,7 +378,8 @@ func TestGoogleCalendarService_SyncIdempotencyAndReconciliation(t *testing.T) {
 	}
 
 	provider := &mockCalendarProvider{}
-	svc := NewGoogleCalendarService(repo, repo, provider, &mockEnqueuer{}, nil, testJWTSecret, testEncKey, "https://cb.test")
+	stateStore := newMockOAuthStateStore()
+	svc := NewGoogleCalendarService(repo, repo, provider, &mockEnqueuer{}, stateStore, testJWTSecret, testEncKey, "https://cb.test")
 
 	// Configura e conecta tenant
 	cid, csec := "cid-sync", "csec-sync"
@@ -378,7 +428,18 @@ func TestGoogleCalendarService_SyncIdempotencyAndReconciliation(t *testing.T) {
 		t.Fatalf("esperava 1 create e 1 update, obteve create=%d update=%d", len(provider.createCalls), len(provider.updateCalls))
 	}
 
-	// 3) Mudança de calendário -> deleta no antigo ("primary") e cria no novo ("cal-vip")
+	// 3) Task DELETE atrasada chegando quando agendamento está CONFIRMED no banco (ex: reagendado/reconfirmado) NÃO deve apagar o evento
+	if err := svc.SyncAppointment(ctx, tenantID, apt.ID, domain.CalendarSyncActionDelete); err != nil {
+		t.Fatalf("SyncAppointment com action DELETE atrasada falhou: %v", err)
+	}
+	if len(provider.deleteCalls) != 0 {
+		t.Fatalf("task DELETE atrasada não deveria apagar evento de agendamento CONFIRMED, obteve deletes=%v", provider.deleteCalls)
+	}
+	if len(provider.updateCalls) != 2 {
+		t.Fatalf("esperava reconciliação via UpdateEvent para agendamento CONFIRMED (total 2 updates), obteve %d", len(provider.updateCalls))
+	}
+
+	// 4) Mudança de calendário -> deleta no antigo ("primary") e cria no novo ("cal-vip")
 	newCal := "cal-vip"
 	_, _ = svc.UpdateSettings(ctx, tenantID, domain.UpdateGoogleCalendarSettingsDTO{CalendarID: &newCal})
 	if err := svc.SyncAppointment(ctx, tenantID, apt.ID, domain.CalendarSyncActionUpdate); err != nil {
@@ -391,7 +452,7 @@ func TestGoogleCalendarService_SyncIdempotencyAndReconciliation(t *testing.T) {
 		t.Fatalf("esperava criação no novo calendário cal-vip, obteve %d creates", len(provider.createCalls))
 	}
 
-	// 4) Cancelamento no banco -> remove evento do calendário atual e marca DELETED
+	// 5) Cancelamento no banco -> remove evento do calendário atual e marca DELETED
 	_ = repo.UpdateAppointmentStatus(ctx, tenantID, apt.ID, domain.StatusCancelled, "Admin", "Cliente desistiu")
 	if err := svc.SyncAppointment(ctx, tenantID, apt.ID, domain.CalendarSyncActionDelete); err != nil {
 		t.Fatalf("SyncAppointment delete falhou: %v", err)
@@ -453,13 +514,67 @@ func TestCentralization_AppointmentServiceAndAIChatService(t *testing.T) {
 	aptSvc := NewAppointmentService(repo, nil)
 	aptSvc.SetCalendarSyncDependencies(enqueuer, repo)
 
-	// 1. CreateAppointment dispara CREATE
+	// 0. Sem integração Google Calendar ativa, NÃO deve enfileirar nenhuma task no Asynq
 	startAt := time.Now().Add(24 * time.Hour)
-	apt, err := aptSvc.CreateAppointment(ctx, CreateAppointmentDTO{
+	aptNoGcal, err := aptSvc.CreateAppointment(ctx, CreateAppointmentDTO{
 		TenantID:       tenantID,
 		ServiceID:      svcID,
 		ProfessionalID: proID,
 		StartAt:        startAt,
+		CustomerName:   "Sem Agenda",
+		CustomerPhone:  "11900001111",
+	})
+	if err != nil {
+		t.Fatalf("CreateAppointment sem Google Calendar falhou: %v", err)
+	}
+	if len(enqueuer.payloads) != 0 {
+		t.Fatalf("não deveria enfileirar task sem integração Google Calendar ativa, obteve %+v", enqueuer.payloads)
+	}
+	_ = aptSvc.Cancel(ctx, tenantID, aptNoGcal.ID, "Teste", "Admin")
+	if len(enqueuer.payloads) != 0 {
+		t.Fatalf("não deveria enfileirar DELETE sem integração Google Calendar ativa, obteve %+v", enqueuer.payloads)
+	}
+
+	// Configura Google Calendar conectado porém ainda desativado (IsEnabled=false) -> também não enfileira
+	_ = repo.UpsertGoogleCalendarConfig(ctx, &domain.TenantGoogleCalendarConfig{
+		ID:                          uuid.New(),
+		TenantID:                    tenantID,
+		IsEnabled:                   false,
+		Status:                      domain.GoogleCalendarStatusConnected,
+		GoogleClientID:              "cid",
+		GoogleClientSecretEncrypted: "enc",
+	})
+	aptDisabled, err := aptSvc.CreateAppointment(ctx, CreateAppointmentDTO{
+		TenantID:       tenantID,
+		ServiceID:      svcID,
+		ProfessionalID: proID,
+		StartAt:        startAt.Add(1 * time.Hour),
+		CustomerName:   "Agenda Desativada",
+		CustomerPhone:  "11900002222",
+	})
+	if err != nil || aptDisabled == nil {
+		t.Fatalf("CreateAppointment com Google Calendar desativado falhou: %v", err)
+	}
+	if len(enqueuer.payloads) != 0 {
+		t.Fatalf("não deveria enfileirar task com IsEnabled=false, obteve %+v", enqueuer.payloads)
+	}
+
+	// Habilita integração Google Calendar (IsEnabled=true e CONNECTED)
+	_ = repo.UpsertGoogleCalendarConfig(ctx, &domain.TenantGoogleCalendarConfig{
+		ID:                          uuid.New(),
+		TenantID:                    tenantID,
+		IsEnabled:                   true,
+		Status:                      domain.GoogleCalendarStatusConnected,
+		GoogleClientID:              "cid",
+		GoogleClientSecretEncrypted: "enc",
+	})
+
+	// 1. CreateAppointment dispara CREATE
+	apt, err := aptSvc.CreateAppointment(ctx, CreateAppointmentDTO{
+		TenantID:       tenantID,
+		ServiceID:      svcID,
+		ProfessionalID: proID,
+		StartAt:        startAt.Add(2 * time.Hour),
 		CustomerName:   "Lucas Mendes",
 		CustomerPhone:  "11988887777",
 	})
@@ -471,7 +586,7 @@ func TestCentralization_AppointmentServiceAndAIChatService(t *testing.T) {
 	}
 
 	// 2. Reschedule dispara UPDATE
-	if err := aptSvc.Reschedule(ctx, tenantID, apt.ID, startAt.Add(2*time.Hour), proID); err != nil {
+	if err := aptSvc.Reschedule(ctx, tenantID, apt.ID, startAt.Add(4*time.Hour), proID); err != nil {
 		t.Fatalf("Reschedule falhou: %v", err)
 	}
 	if len(enqueuer.payloads) != 2 || enqueuer.payloads[1].Action != domain.CalendarSyncActionUpdate {
@@ -492,21 +607,13 @@ func TestCentralization_AppointmentServiceAndAIChatService(t *testing.T) {
 	}
 
 	// 4. Falha no enqueuer NÃO bloqueia agendamento e registra FAILED quando Google Calendar está conectado+habilitado
-	_ = repo.UpsertGoogleCalendarConfig(ctx, &domain.TenantGoogleCalendarConfig{
-		ID:                          uuid.New(),
-		TenantID:                    tenantID,
-		IsEnabled:                   true,
-		Status:                      domain.GoogleCalendarStatusConnected,
-		GoogleClientID:              "cid",
-		GoogleClientSecretEncrypted: "enc",
-	})
 	aptSvc.SetCalendarSyncDependencies(&mockEnqueuer{err: errors.New("redis connection refused")}, repo)
 
 	aptFail, err := aptSvc.CreateAppointment(ctx, CreateAppointmentDTO{
 		TenantID:       tenantID,
 		ServiceID:      svcID,
 		ProfessionalID: proID,
-		StartAt:        startAt.Add(5 * time.Hour),
+		StartAt:        startAt.Add(6 * time.Hour),
 		CustomerName:   "Maria Souza",
 		CustomerPhone:  "11977776666",
 	})

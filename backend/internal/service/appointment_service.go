@@ -162,7 +162,16 @@ func (s *AppointmentService) Reschedule(ctx context.Context, tenantID, id uuid.U
 }
 
 func (s *AppointmentService) enqueueGoogleCalendarSync(ctx context.Context, tenantID, appointmentID uuid.UUID, action domain.CalendarSyncAction) {
-	if s.calendarEnqueuer == nil {
+	if s.calendarEnqueuer == nil || s.googleCalRepo == nil {
+		return
+	}
+
+	cfg, cfgErr := s.googleCalRepo.GetGoogleCalendarConfigByTenantID(ctx, tenantID)
+	if cfgErr != nil {
+		log.Printf("⚠️ [AppointmentService] Falha ao consultar config Google Calendar (tenant=%s): %v", tenantID, cfgErr)
+		return
+	}
+	if cfg == nil || !cfg.IsEnabled || cfg.Status != domain.GoogleCalendarStatusConnected {
 		return
 	}
 
@@ -177,14 +186,6 @@ func (s *AppointmentService) enqueueGoogleCalendarSync(ctx context.Context, tena
 
 	log.Printf("⚠️ [AppointmentService] Falha ao enfileirar sync Google Calendar (tenant=%s apt=%s action=%s): %v",
 		tenantID, appointmentID, action, err)
-
-	if s.googleCalRepo == nil {
-		return
-	}
-	cfg, cfgErr := s.googleCalRepo.GetGoogleCalendarConfigByTenantID(ctx, tenantID)
-	if cfgErr != nil || cfg == nil || !cfg.IsEnabled || cfg.Status != domain.GoogleCalendarStatusConnected {
-		return
-	}
 
 	syncRec, recErr := s.googleCalRepo.GetAppointmentCalendarSync(ctx, tenantID, appointmentID, domain.CalendarProviderGoogle)
 	if recErr != nil || syncRec == nil {

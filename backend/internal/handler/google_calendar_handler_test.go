@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -60,6 +62,32 @@ func (n *noopEnqueuer) EnqueueGoogleCalendarSync(ctx context.Context, payload qu
 	return nil
 }
 
+type stubOAuthStateStore struct {
+	mu   sync.Mutex
+	data map[string]string
+}
+
+func (s *stubOAuthStateStore) Set(ctx context.Context, key, value string, ttl time.Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.data == nil {
+		s.data = make(map[string]string)
+	}
+	s.data[key] = value
+	return nil
+}
+
+func (s *stubOAuthStateStore) GetDel(ctx context.Context, key string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	val, ok := s.data[key]
+	if !ok {
+		return "", errors.New("not found")
+	}
+	delete(s.data, key)
+	return val, nil
+}
+
 func setupGoogleCalendarHandlerTestApp(t *testing.T) (*gin.Engine, *postgres.Repository, *jwt.JWTService) {
 	gin.SetMode(gin.TestMode)
 	dbName := fmt.Sprintf("file:mem_gcal_handler_%d?mode=memory&cache=shared&_busy_timeout=10000", time.Now().UnixNano())
@@ -92,7 +120,7 @@ func setupGoogleCalendarHandlerTestApp(t *testing.T) (*gin.Engine, *postgres.Rep
 	jwtSecret := "super-secret-test-key-32-chars-long"
 	encKey := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 	jwtSvc := jwt.NewJWTService(jwtSecret, 24)
-	gcalSvc := service.NewGoogleCalendarService(repo, repo, &stubCalendarProvider{}, &noopEnqueuer{}, nil, jwtSecret, encKey, "https://app.test.com/api/v1/integrations/google-calendar/callback")
+	gcalSvc := service.NewGoogleCalendarService(repo, repo, &stubCalendarProvider{}, &noopEnqueuer{}, &stubOAuthStateStore{}, jwtSecret, encKey, "https://app.test.com/api/v1/integrations/google-calendar/callback")
 	gcalHandler := handler.NewGoogleCalendarHandler(gcalSvc, "https://app.test.com")
 	subService := service.NewSubscriptionService(repo, nil)
 	planService := service.NewPlanService(repo)

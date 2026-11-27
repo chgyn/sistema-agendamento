@@ -74,7 +74,7 @@ func main() {
 		repo,
 		gcalClient,
 		queueClient,
-		redisClient,
+		service.NewRedisOAuthStateStore(redisClient),
 		cfg.JWTSecret,
 		cfg.EncryptionKey,
 		cfg.GoogleOAuthRedirectURI,

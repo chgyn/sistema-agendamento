@@ -39,6 +39,32 @@ type CalendarSyncEnqueuer interface {
 	EnqueueGoogleCalendarSync(ctx context.Context, payload queue.GoogleCalendarSyncPayload) error
 }
 
+// OAuthStateStore abstrai o armazenamento atômico e de uso único do nonce OAuth
+type OAuthStateStore interface {
+	Set(ctx context.Context, key, value string, ttl time.Duration) error
+	GetDel(ctx context.Context, key string) (string, error)
+}
+
+type redisOAuthStateStore struct {
+	client *redis.Client
+}
+
+// NewRedisOAuthStateStore adapta *redis.Client para OAuthStateStore
+func NewRedisOAuthStateStore(client *redis.Client) OAuthStateStore {
+	if client == nil {
+		return nil
+	}
+	return &redisOAuthStateStore{client: client}
+}
+
+func (r *redisOAuthStateStore) Set(ctx context.Context, key, value string, ttl time.Duration) error {
+	return r.client.Set(ctx, key, value, ttl).Err()
+}
+
+func (r *redisOAuthStateStore) GetDel(ctx context.Context, key string) (string, error) {
+	return r.client.GetDel(ctx, key).Result()
+}
+
 type oauthStatePayload struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 	UserID   uuid.UUID `json:"user_id"`
@@ -51,7 +77,7 @@ type GoogleCalendarService struct {
 	aptRepo       AppointmentReader
 	provider      domain.CalendarProvider
 	enqueuer      CalendarSyncEnqueuer
-	redisClient   *redis.Client
+	stateStore    OAuthStateStore
 	jwtSecret     string
 	encryptionKey string
 	redirectURI   string
@@ -62,7 +88,7 @@ func NewGoogleCalendarService(
 	aptRepo AppointmentReader,
 	provider domain.CalendarProvider,
 	enqueuer CalendarSyncEnqueuer,
-	redisClient *redis.Client,
+	stateStore OAuthStateStore,
 	jwtSecret string,
 	encryptionKey string,
 	redirectURI string,
@@ -72,7 +98,7 @@ func NewGoogleCalendarService(
 		aptRepo:       aptRepo,
 		provider:      provider,
 		enqueuer:      enqueuer,
-		redisClient:   redisClient,
+		stateStore:    stateStore,
 		jwtSecret:     jwtSecret,
 		encryptionKey: encryptionKey,
 		redirectURI:   redirectURI,
@@ -549,8 +575,8 @@ func (s *GoogleCalendarService) SyncAppointment(ctx context.Context, tenantID, a
 		return s.recordSyncFailure(ctx, cfg, syncRec, action, err)
 	}
 
-	// Reconciliação pelo estado atual no DB (evita race condition em eventos fora de ordem)
-	if apt.Status == domain.StatusCancelled || action == domain.CalendarSyncActionDelete {
+	// Reconciliação exclusivamente pelo estado atual persistido no DB (evita que task DELETE atrasada apague evento reconfirmado)
+	if apt.Status == domain.StatusCancelled {
 		return s.syncDeletion(ctx, cfg, syncRec, accessToken)
 	}
 
@@ -732,6 +758,10 @@ func (s *GoogleCalendarService) recordSyncFailure(
 }
 
 func (s *GoogleCalendarService) generateOAuthState(ctx context.Context, tenantID, userID uuid.UUID) (string, error) {
+	if s.stateStore == nil {
+		return "", errors.New("store de estado OAuth indisponível")
+	}
+
 	nonceBytes := make([]byte, 16)
 	if _, err := rand.Read(nonceBytes); err != nil {
 		return "", err
@@ -752,16 +782,18 @@ func (s *GoogleCalendarService) generateOAuthState(ctx context.Context, tenantID
 	payloadB64 := base64.RawURLEncoding.EncodeToString(payloadJSON)
 	sigB64 := s.signStatePayload(payloadB64)
 
-	if s.redisClient != nil {
-		if err := s.redisClient.Set(ctx, oauthStateRedisPrefix+nonce, tenantID.String(), oauthStateTTL).Err(); err != nil {
-			return "", fmt.Errorf("falha ao registrar nonce OAuth no Redis: %w", err)
-		}
+	if err := s.stateStore.Set(ctx, oauthStateRedisPrefix+nonce, tenantID.String(), oauthStateTTL); err != nil {
+		return "", fmt.Errorf("falha ao registrar nonce OAuth no Redis: %w", err)
 	}
 
 	return payloadB64 + "." + sigB64, nil
 }
 
 func (s *GoogleCalendarService) validateAndConsumeOAuthState(ctx context.Context, state string) (*oauthStatePayload, error) {
+	if s.stateStore == nil {
+		return nil, domain.ErrInvalidOAuthState
+	}
+
 	parts := strings.Split(state, ".")
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return nil, domain.ErrInvalidOAuthState
@@ -786,11 +818,9 @@ func (s *GoogleCalendarService) validateAndConsumeOAuthState(ctx context.Context
 		return nil, domain.ErrInvalidOAuthState
 	}
 
-	if s.redisClient != nil {
-		storedTenantID, err := s.redisClient.GetDel(ctx, oauthStateRedisPrefix+payload.Nonce).Result()
-		if err != nil || storedTenantID != payload.TenantID.String() {
-			return nil, domain.ErrInvalidOAuthState
-		}
+	storedTenantID, err := s.stateStore.GetDel(ctx, oauthStateRedisPrefix+payload.Nonce)
+	if err != nil || storedTenantID != payload.TenantID.String() {
+		return nil, domain.ErrInvalidOAuthState
 	}
 
 	return &payload, nil

@@ -335,6 +335,12 @@
               >
                 <option value="primary">Agenda Principal (primary)</option>
                 <option
+                  v-if="showFallbackCalendarOption"
+                  :value="syncForm.calendar_id"
+                >
+                  {{ fallbackCalendarLabel }}
+                </option>
+                <option
                   v-for="cal in calendars"
                   :key="cal.id"
                   :value="cal.id"
@@ -537,6 +543,20 @@ const failures = ref<FailureItem[]>([])
 const effectiveRedirectURI = computed(() => {
   if (statusData.redirect_uri) return statusData.redirect_uri
   return `${window.location.origin}/api/v1/integrations/google-calendar/callback`
+})
+
+const showFallbackCalendarOption = computed(() => {
+  const id = syncForm.calendar_id
+  if (!id || id === 'primary') return false
+  return !calendars.value.some(c => c.id === id)
+})
+
+const fallbackCalendarLabel = computed(() => {
+  const id = syncForm.calendar_id
+  if (statusData.calendar_summary && statusData.calendar_summary !== id) {
+    return `${statusData.calendar_summary} (${id})`
+  }
+  return id
 })
 
 function applyStatusResponse(data: any) {
